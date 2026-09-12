@@ -68,40 +68,7 @@ Central unificada de alto desempenho para execução, gerenciamento de saves, su
 ## 🚀 Como Executar
 
 ### Pré-requisitos
-- [LÖVE 11.5+](https://love2d.org/) instalado no sistema.
-
-### Inicialização Rápida
-- Dê um **duplo clique no arquivo `Play-Hub.bat`**, ou
-- Pelo terminal:
-  ```bash
-  love "RetroRecomp Hub"
-  ```
-
-### Verificação Automatizada
-Para rodar os testes unitários e de resolução de caminhos:
-```bash
-love "RetroRecomp Hub" --verify
-love "RetroRecomp Hub" --test
-```
-
----
-
-## 📁 Estrutura do Projeto
-
-```text
-RetroRecomp Hub/
-├── Play-Hub.bat              # Inicializador rápido para Windows
-├── conf.lua                  # Configurações de janela (1120x700, MSAA 4x, HighDPI)
-├── main.lua                  # Loop principal de eventos do LÖVE2D
-├── emulator/                 # Motor mGBA integrado, shaders e configurações
-├── roms/
-│   ├── gbc/                  # ROMs de Game Boy / Game Boy Color
-│   └── gba/                  # ROMs de Game Boy Advance
-├── src/
-│   ├── core/                 # Theme, Router, PlatformManager, ModManager, SaveManager
-│   └── ui/                   # CartridgeRenderer, GameSelector, GameDetailsView, Modals
-└── mods/                     # Pacotes e manifestos de modificações
-```
+- [LÖVE 11.5+](https://love2d.org/) instalado no sistema (ou execute diretamente via `Play-Hub.bat`).
 
 ---
 
