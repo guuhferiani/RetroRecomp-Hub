@@ -1,25 +1,69 @@
-# ROM files (legal compliance - do not distribute copyrighted commercial ROMs)
+# ==============================================================================
+# RETRORECOMP HUB - GITIGNORE & COMPLIANCE RULES
+# ==============================================================================
+
+# 1. ROM & Game Dumps (Strict Legal Compliance - No copyrighted game distribution)
 *.gba
 *.gbc
 *.gb
 *.zip
 *.7z
+*.rar
+*.nes
+*.sfc
+*.smc
+*.z64
+*.n64
+*.iso
+*.bin
+*.cue
 
-# Battery Save files & runtime states (personal player saves)
+# Keep directory structure intact without committing game binaries
+!roms/**/.gitkeep
+
+# 2. Player Battery Saves & Save States (Personal Data Protection)
 *.sav
 *.sa1
 *.sa2
+*.sa3
+*.sa4
+*.ss*
+*.state*
+*.srm
+*.dsv
+!saves/.gitkeep
 
-# Logs and crash dumps
+# 3. Local Logs, Dumps & Caches
 *.log
 error.log
 crash.dmp
+__pycache__/
+*.pyc
 
-# OS & IDE metadata
+# 4. OS & File Explorer Artifacts
 .DS_Store
 Thumbs.db
+ehthumbs.db
+desktop.ini
+$RECYCLE.BIN/
+
+# 5. IDE & Editor Metadata
 .vscode/
 .idea/
+*.suo
+*.user
+*.userosv
+*.sln.docstates
 
-# User config local overrides
+# 6. Sensitive Configuration & Secrets Protection
+.env
+.env.*
+*.pem
+*.key
+*.cert
+*.pfx
+
+# 7. Local User Runtime Overrides
 user_config.json
+options.lua
+options.local.lua
