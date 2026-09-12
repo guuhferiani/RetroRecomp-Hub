@@ -12,8 +12,8 @@ function MobileBridge.init()
     -- Detect if device has touch capability
     MobileBridge.hasTouchScreen = MobileBridge.isMobileOS or (love.touch and #love.touch.getTouches() > 0)
 
-    -- Auto-enable virtual controls on mobile devices
-    MobileBridge.virtualControlsEnabled = MobileBridge.isMobileOS
+    -- Virtual controls disabled by default in menu (direct touch navigation)
+    MobileBridge.virtualControlsEnabled = false
 
     -- Safe area detection for notches and system navigation bars
     if MobileBridge.isMobileOS and love.window and love.window.getSafeArea then
