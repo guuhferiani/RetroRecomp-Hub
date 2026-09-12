@@ -48,8 +48,11 @@ jobs:
 
       - name: Clone love-android base (v11.5a)
         run: |
-          git clone --depth 1 --branch 11.5a --recurse-submodules --shallow-submodules \
-            https://github.com/love2d/love-android.git android-builder
+          for i in 1 2 3; do
+            rm -rf android-builder
+            git clone --depth 1 --branch 11.5a --recurse-submodules --shallow-submodules \
+              https://github.com/love2d/love-android.git android-builder && break || sleep 5
+          done
           rm -rf android-builder/.git android-builder/love/src/jni/love/.git
 
       - name: Inject game.love and customize branding
