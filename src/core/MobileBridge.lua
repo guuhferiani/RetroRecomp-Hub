@@ -24,6 +24,17 @@ function MobileBridge.init()
         MobileBridge.safeArea.right = math.max(0, winW - (sx + sw))
         MobileBridge.safeArea.bottom = math.max(0, winH - (sy + sh))
     end
+
+    -- Prevent screen sleep while Hub is active on Android
+    if MobileBridge.isMobileOS and love.window and love.window.setDisplaySleepEnabled then
+        love.window.setDisplaySleepEnabled(false)
+    end
+end
+
+function MobileBridge.hapticFeedback(duration)
+    if MobileBridge.isMobileOS and love.system and love.system.vibrate then
+        pcall(love.system.vibrate, duration or 0.018)
+    end
 end
 
 function MobileBridge.isMobile()
@@ -32,6 +43,7 @@ end
 
 function MobileBridge.toggleControls()
     MobileBridge.virtualControlsEnabled = not MobileBridge.virtualControlsEnabled
+    MobileBridge.hapticFeedback(0.025)
     return MobileBridge.virtualControlsEnabled
 end
 
