@@ -82,39 +82,36 @@ jobs:
       - name: Collect and rename APK
         run: |
           mkdir -p build/apk
-          cp android-builder/app/build/outputs/apk/embedNoRecord/debug/*.apk build/apk/RetroRecompHub-v1.0.0.apk
-          cp build/apk/RetroRecompHub-v1.0.0.apk build/apk/RetroRecompHub-debug.apk
+          cp android-builder/app/build/outputs/apk/embedNoRecord/debug/*.apk build/apk/RetroRecompHub-v1.0.1.apk
+          cp build/apk/RetroRecompHub-v1.0.1.apk build/apk/RetroRecompHub-debug.apk
 
       - name: Upload Android APK
         uses: actions/upload-artifact@v4
         with:
           name: RetroRecompHub-Android-APK
-          path: build/apk/RetroRecompHub-v1.0.0.apk
+          path: build/apk/RetroRecompHub-v1.0.1.apk
 
-      - name: Create Official GitHub Release (v1.0.0)
+      - name: Create Official GitHub Release (v1.0.1)
         if: github.ref == 'refs/heads/main' && github.event_name == 'push'
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: v1.0.0
-          name: "RetroRecomp Hub v1.0.0 🚀 (Multi-Console & Shaders)"
+          tag_name: v1.0.1
+          name: "RetroRecomp Hub v1.0.1 🚀 (Hotfix Android)"
           body: |
-            ## 🎮 RetroRecomp Hub v1.0.0 — Lançamento Oficial!
+            ## 🎮 RetroRecomp Hub v1.0.1 — Hotfix Android
 
-            Central unificada de emulação retrô e projetos recompilados, com shaders em tempo real, suporte a múltiplos consoles clássicos e experiência otimizada para PC e smartphones modernos!
+            Atualização de correção para inicialização no Android e suporte aprimorado a telas panorâmicas (19.5:9 / 20:9).
 
-            ### ✨ O que há de novo:
-            - 🎨 **Novo Ícone Oficial:** Cartucho clássico com D-pad neon e trilhas holográficas.
-            - 📱 **Otimização para Telas Modernas:** Layout com escala responsiva virtual e safe area para aparelhos como Samsung Galaxy S25 Ultra (19.5:9 QHD+).
-            - 🕹️ **5 Plataformas Clássicas:** Game Boy, Game Boy Color, Game Boy Advance, Super Nintendo (SNES) e Sony PlayStation 1 (PS1).
-            - ⚡ **Shaders em Tempo Real (`F`):** CRT Scanlines, LCD Grid Portátil, GBA Color Boost, Vignette Tube e Scale4x.
-            - 💾 **Gerenciador de Saves e Mods:** Até 4 slots de gravação por jogo e suporte a mods traduzidos.
+            ### 🐛 Correções:
+            - 🔧 **Hotfix de Inicialização:** Corrigido erro de argumento nulo (`bad argument #4 to 'rectangle'`) na renderização dos botões de ação em telas largas / modo paisagem.
+            - 🛡️ **Defensive Rendering:** Adicionadas travas de segurança em `Theme.drawCard` para evitar quebras por parâmetros indefinidos.
 
             ---
             ### 📥 Downloads:
-            - **Android:** Instale o arquivo `RetroRecompHub-v1.0.0.apk` diretamente no seu celular.
+            - **Android:** Instale o arquivo `RetroRecompHub-v1.0.1.apk` diretamente no seu celular.
             - **Universal / PC:** Execute o arquivo `RetroRecompHub.love` através do LÖVE 11.5+.
           draft: false
           prerelease: false
           files: |
-            build/apk/RetroRecompHub-v1.0.0.apk
+            build/apk/RetroRecompHub-v1.0.1.apk
             build/dist/RetroRecompHub.love

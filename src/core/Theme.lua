@@ -35,6 +35,10 @@ function Theme.init()
 end
 
 function Theme.drawCard(x, y, w, h, radius, isHovered, isSelected, accentColor)
+    x = x or 0
+    y = y or 0
+    w = w or 100
+    h = h or 40
     radius = radius or 10
     local bg = isSelected and Theme.colors.panelCardHover or (isHovered and Theme.colors.panelCardHover or Theme.colors.panelCard)
     local border = isSelected and (accentColor or Theme.colors.panelBorderFocus) or (isHovered and Theme.colors.panelBorderFocus or Theme.colors.panelBorder)

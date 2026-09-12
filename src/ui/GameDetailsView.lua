@@ -109,7 +109,7 @@ function GameDetailsView.draw(game, x, y, w, h, Theme, ModManager, SaveManager, 
 
         local shadersX = savesX + btnW + gap
         local isShadersHover = (mx >= shadersX and mx <= shadersX + btnW and my >= btnY and my <= btnY + playH)
-        Theme.drawCard(shadersX, btnY, shadersW, playH, 10, isShadersHover, false, Theme.colors.accentGold)
+        Theme.drawCard(shadersX, btnY, btnW, playH, 10, isShadersHover, false, Theme.colors.accentGold)
         love.graphics.setColor(Theme.colors.accentGold)
         love.graphics.setFont(Theme.fonts.body)
         love.graphics.printf("⚡ SHADERS", shadersX, btnY + 14, btnW, "center")
