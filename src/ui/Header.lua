@@ -1,8 +1,10 @@
 local Header = {
     tabs = {
         { id = "all", label = "★ TODOS" },
-        { id = "gbc", label = "🎮 GB / GBC" },
-        { id = "gba", label = "⚡ GBA" }
+        { id = "gbc", label = "🎮 GB/GBC" },
+        { id = "gba", label = "⚡ GBA" },
+        { id = "snes", label = "🕹️ SNES" },
+        { id = "ps1", label = "💿 PS1" }
     }
 }
 
@@ -18,15 +20,15 @@ function Header.draw(w, activePlatform, Theme)
     -- Hub Brand Logo & Title
     love.graphics.setColor(Theme.colors.accentGold)
     love.graphics.setFont(Theme.fonts.header)
-    love.graphics.print("⚡ RETRORECOMP HUB", 24, 20)
+    love.graphics.print("⚡ RETRORECOMP", 20, 20)
 
-    -- Platform Tabs
-    local tabStartX = 320
-    local tabW, tabH = 120, 36
+    -- Platform Tabs (5 consoles)
+    local tabStartX = 245
+    local tabW, tabH = 100, 36
     local mx, my = love.mouse.getPosition()
 
     for i, tab in ipairs(Header.tabs) do
-        local tx = tabStartX + (i - 1) * (tabW + 10)
+        local tx = tabStartX + (i - 1) * (tabW + 8)
         local ty = 14
         local isSelected = (tab.id == activePlatform)
         local isHovered = (mx >= tx and mx <= tx + tabW and my >= ty and my <= ty + tabH)
@@ -35,7 +37,7 @@ function Header.draw(w, activePlatform, Theme)
             love.graphics.setColor(Theme.colors.panelCardHover)
             love.graphics.rectangle("fill", tx, ty, tabW, tabH, 8, 8)
             love.graphics.setColor(Theme.colors.accentGbc)
-            love.graphics.rectangle("fill", tx + 15, ty + tabH - 3, tabW - 30, 3, 2, 2)
+            love.graphics.rectangle("fill", tx + 12, ty + tabH - 3, tabW - 24, 3, 2, 2)
             love.graphics.setColor(Theme.colors.textPrimary)
         elseif isHovered then
             love.graphics.setColor(Theme.colors.panelCard)
@@ -72,11 +74,11 @@ function Header.mousepressed(x, y, activePlatform, w)
         return nil, true
     end
 
-    local tabStartX = 320
-    local tabW, tabH = 120, 36
+    local tabStartX = 245
+    local tabW, tabH = 100, 36
 
     for i, tab in ipairs(Header.tabs) do
-        local tx = tabStartX + (i - 1) * (tabW + 10)
+        local tx = tabStartX + (i - 1) * (tabW + 8)
         local ty = 14
         if x >= tx and x <= tx + tabW and y >= ty and y <= ty + tabH then
             return tab.id, false

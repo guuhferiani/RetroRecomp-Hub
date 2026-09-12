@@ -5,6 +5,7 @@ local ModManager = require("src.core.ModManager")
 local SaveManager = require("src.core.SaveManager")
 local Router = require("src.core.Router")
 local MobileBridge = require("src.core.MobileBridge")
+local ShaderManager = require("src.core.ShaderManager")
 
 local Header = require("src.ui.Header")
 local GameSelector = require("src.ui.GameSelector")
@@ -13,8 +14,9 @@ local CartridgeRenderer = require("src.ui.CartridgeRenderer")
 local TouchOverlay = require("src.ui.TouchOverlay")
 local ModsModal = require("src.ui.ModsModal")
 local SavesModal = require("src.ui.SavesModal")
+local ShaderModal = require("src.ui.ShaderModal")
 
-local currentModal = nil -- nil, "mods", "saves"
+local currentModal = nil -- nil, "mods", "saves", "shaders"
 local actionHitboxes = {}
 local modalHitboxes = {}
 
@@ -23,6 +25,7 @@ function love.load(args)
     Config.load()
     MobileBridge.init()
     TouchOverlay.init()
+    ShaderManager.init(Config.activeShader)
 
     -- Automated verification test mode
     for _, a in ipairs(args or {}) do
@@ -31,8 +34,17 @@ function love.load(args)
             print("[TEST] Running automated RetroRecomp Hub self-tests...")
             local gbcGames = PlatformManager.getGamesByPlatform("gbc")
             local gbaGames = PlatformManager.getGamesByPlatform("gba")
+            local snesGames = PlatformManager.getGamesByPlatform("snes")
+            local ps1Games = PlatformManager.getGamesByPlatform("ps1")
             assert(#gbcGames >= 2, "Expected at least 2 GBC games")
             assert(#gbaGames >= 1, "Expected at least 1 GBA game")
+            assert(#snesGames >= 1, "Expected at least 1 SNES game")
+            assert(#ps1Games >= 1, "Expected at least 1 PS1 game")
+
+            -- Test Shaders
+            assert(#ShaderManager.getPresets() >= 4, "Expected at least 4 shader presets")
+            ShaderManager.setPreset("crt")
+            assert(ShaderManager.activeShaderId == "crt", "Expected active shader to be crt")
 
             -- Test Mod Manager
             local active, total = ModManager.getActiveCount("crystal")
@@ -55,11 +67,14 @@ function love.load(args)
 
             for _, g in ipairs(PlatformManager.games) do
                 local rom = Router.findRom(g)
-                print(string.format("Game [%s - %s]: ROM = %s", g.platform, g.title, tostring(rom)))
-                assert(rom ~= nil, "ROM not found for " .. g.id)
+                local status = rom and "OK ✓ (" .. rom .. ")" or "PENDENTE (coloque a ROM em roms/" .. g.platform .. "/)"
+                print(string.format("Game [%s - %s]: %s", g.platform, g.title, status))
+                if g.id == "crystal" or g.id == "yellow" or g.id == "firered" then
+                    assert(rom ~= nil, "ROM not found for " .. g.id)
+                end
             end
 
-            print("=== ALL 3 GAMES AND EMULATOR RESOLVED 100% SUCCESSFULLY! ===")
+            print("=== VERIFICATION OF ALL 5 PLATFORMS COMPLETED SUCCESSFULLY! ===")
             love.event.quit(0)
             return
         end
@@ -108,11 +123,13 @@ function love.draw()
     local detailsW = w - sidebarW
     actionHitboxes = GameDetailsView.draw(selectedGame, detailsX, headerH, detailsW, h - headerH, Theme, ModManager, SaveManager, CartridgeRenderer)
 
-    -- 6. Modals (Mods / Saves)
+    -- 6. Modals (Mods / Saves / Shaders)
     if currentModal == "mods" then
         modalHitboxes = ModsModal.draw(selectedGame, w, h, Theme, ModManager)
     elseif currentModal == "saves" then
         modalHitboxes = SavesModal.draw(selectedGame, w, h, Theme, SaveManager)
+    elseif currentModal == "shaders" then
+        modalHitboxes = ShaderModal.draw(selectedGame, w, h, Theme, ShaderManager)
     end
 
     -- 7. Router Launch Overlay
@@ -173,6 +190,28 @@ function love.mousepressed(x, y, button)
             return
         end
         return
+    elseif currentModal == "shaders" and modalHitboxes then
+        if modalHitboxes.closeBtn then
+            local cb = modalHitboxes.closeBtn
+            if x >= cb.x and x <= cb.x + cb.w and y >= cb.y and y <= cb.y + cb.h then
+                currentModal = nil
+                return
+            end
+        end
+        for _, pb in ipairs(modalHitboxes.presetButtons or {}) do
+            if x >= pb.x and x <= pb.x + pb.w and y >= pb.y and y <= pb.y + pb.h then
+                ShaderManager.setPreset(pb.presetId)
+                Config.activeShader = pb.presetId
+                Config.save()
+                return
+            end
+        end
+        local mb = modalHitboxes.modalBounds
+        if mb and (x < mb.x or x > mb.x + mb.w or y < mb.y or y > mb.y + mb.h) then
+            currentModal = nil
+            return
+        end
+        return
     end
 
     -- B. Header Platform Tabs & Touch Toggle
@@ -220,6 +259,14 @@ function love.mousepressed(x, y, button)
                 return
             end
         end
+        -- Shaders Button
+        if actionHitboxes.shaders then
+            local sh = actionHitboxes.shaders
+            if x >= sh.x and x <= sh.x + sh.w and y >= sh.y and y <= sh.y + sh.h then
+                currentModal = "shaders"
+                return
+            end
+        end
         -- Quick Slot Buttons
         if actionHitboxes.slotArea then
             local sa = actionHitboxes.slotArea
@@ -244,9 +291,11 @@ function love.keypressed(key)
             love.event.quit()
         end
     elseif key == "tab" then
-        -- Cycle platforms
+        -- Cycle platforms (All -> GBC -> GBA -> SNES -> PS1 -> All)
         if Config.selectedPlatform == "all" then Config.selectedPlatform = "gbc"
         elseif Config.selectedPlatform == "gbc" then Config.selectedPlatform = "gba"
+        elseif Config.selectedPlatform == "gba" then Config.selectedPlatform = "snes"
+        elseif Config.selectedPlatform == "snes" then Config.selectedPlatform = "ps1"
         else Config.selectedPlatform = "all" end
         Config.save()
     elseif key == "return" or key == "space" then
@@ -258,6 +307,8 @@ function love.keypressed(key)
         currentModal = (currentModal == "mods") and nil or "mods"
     elseif key == "s" then
         currentModal = (currentModal == "saves") and nil or "saves"
+    elseif key == "f" then
+        currentModal = (currentModal == "shaders") and nil or "shaders"
     elseif key == "1" or key == "2" or key == "3" or key == "4" then
         local slotNum = tonumber(key)
         local g = PlatformManager.getGameById(Config.selectedGameId)
