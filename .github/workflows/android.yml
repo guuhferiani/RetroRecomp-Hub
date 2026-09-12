@@ -64,30 +64,11 @@ jobs:
 
       - name: Inject custom app icon into Android resources
         run: |
-          # Remove default adaptive icons so custom icons take effect immediately
+          # Remove default adaptive icons so custom mipmap icons take effect
           rm -rf android-builder/app/src/main/res/mipmap-anydpi-v26
 
-          # Create density folders and generate launcher icons
-          mkdir -p android-builder/app/src/main/res/mipmap-mdpi
-          mkdir -p android-builder/app/src/main/res/mipmap-hdpi
-          mkdir -p android-builder/app/src/main/res/mipmap-xhdpi
-          mkdir -p android-builder/app/src/main/res/mipmap-xxhdpi
-          mkdir -p android-builder/app/src/main/res/mipmap-xxxhdpi
-
-          convert assets/icon.png -resize 48x48 android-builder/app/src/main/res/mipmap-mdpi/ic_launcher.png
-          cp android-builder/app/src/main/res/mipmap-mdpi/ic_launcher.png android-builder/app/src/main/res/mipmap-mdpi/ic_launcher_round.png
-
-          convert assets/icon.png -resize 72x72 android-builder/app/src/main/res/mipmap-hdpi/ic_launcher.png
-          cp android-builder/app/src/main/res/mipmap-hdpi/ic_launcher.png android-builder/app/src/main/res/mipmap-hdpi/ic_launcher_round.png
-
-          convert assets/icon.png -resize 96x96 android-builder/app/src/main/res/mipmap-xhdpi/ic_launcher.png
-          cp android-builder/app/src/main/res/mipmap-xhdpi/ic_launcher.png android-builder/app/src/main/res/mipmap-xhdpi/ic_launcher_round.png
-
-          convert assets/icon.png -resize 144x144 android-builder/app/src/main/res/mipmap-xxhdpi/ic_launcher.png
-          cp android-builder/app/src/main/res/mipmap-xxhdpi/ic_launcher.png android-builder/app/src/main/res/mipmap-xxhdpi/ic_launcher_round.png
-
-          convert assets/icon.png -resize 192x192 android-builder/app/src/main/res/mipmap-xxxhdpi/ic_launcher.png
-          cp android-builder/app/src/main/res/mipmap-xxxhdpi/ic_launcher.png android-builder/app/src/main/res/mipmap-xxxhdpi/ic_launcher_round.png
+          # Copy pre-generated crisp launcher icons
+          cp -r assets/android/* android-builder/app/src/main/res/
 
       - name: Build Android Debug APK
         working-directory: android-builder
