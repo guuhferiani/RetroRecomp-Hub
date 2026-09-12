@@ -49,6 +49,13 @@ function Header.draw(w, activePlatform, Theme)
         love.graphics.printf(tab.label, tx, ty + 9, tabW, "center")
     end
 
+    -- Touch toggle button on top right
+    local MobileBridge = require("src.core.MobileBridge")
+    local touchLabel = MobileBridge.virtualControlsEnabled and "📱 TOUCH: ON" or "📱 TOUCH: OFF"
+    local touchBg = MobileBridge.virtualControlsEnabled and {0.06, 0.75, 0.45, 0.25} or {0.2, 0.25, 0.35, 0.4}
+    local touchColor = MobileBridge.virtualControlsEnabled and Theme.colors.accentGbc or Theme.colors.textMuted
+    Theme.drawBadge(touchLabel, w - 270, 18, touchBg, touchColor)
+
     -- Status pill on top right
     local statusText = "● PRONTO"
     love.graphics.setFont(Theme.fonts.small)
@@ -57,17 +64,26 @@ function Header.draw(w, activePlatform, Theme)
     return headerH
 end
 
-function Header.mousepressed(x, y, activePlatform)
+function Header.mousepressed(x, y, activePlatform, w)
+    -- Check Touch Toggle Button
+    if w and x >= w - 270 and x <= w - 145 and y >= 14 and y <= 50 then
+        local MobileBridge = require("src.core.MobileBridge")
+        MobileBridge.toggleControls()
+        return nil, true
+    end
+
     local tabStartX = 320
     local tabW, tabH = 120, 36
+
     for i, tab in ipairs(Header.tabs) do
         local tx = tabStartX + (i - 1) * (tabW + 10)
         local ty = 14
         if x >= tx and x <= tx + tabW and y >= ty and y <= ty + tabH then
-            return tab.id
+            return tab.id, false
         end
     end
-    return nil
+
+    return nil, false
 end
 
 return Header

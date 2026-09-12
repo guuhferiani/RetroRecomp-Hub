@@ -75,6 +75,18 @@ function Router.launchGame(game, slotId)
     print(string.format("[ROUTER] Found ROM: %s", tostring(romPath)))
     print(string.format("[ROUTER] Found Emulator: %s", tostring(emuPath)))
 
+    local MobileBridge = require("src.core.MobileBridge")
+    if MobileBridge.isMobile() then
+        if romPath then
+            local ok = MobileBridge.launchRomMobile(game, romPath)
+            Router.launchMessage = ok and string.format("Abrindo %s no Android...", game.title) or "Iniciando no ambiente móvel..."
+            return true
+        else
+            Router.launchMessage = string.format("Importe a ROM de %s no celular!", game.title)
+            return false
+        end
+    end
+
     if emuPath and romPath then
         local emuDir = emuPath:match("^(.*)\\[^\\]+$") or emuPath:match("^(.*)/[^/]+$") or "."
         local cmd = string.format('start "" /d "%s" "%s" "%s"', emuDir, emuPath, romPath)

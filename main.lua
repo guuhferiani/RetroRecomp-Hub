@@ -4,11 +4,13 @@ local PlatformManager = require("src.core.PlatformManager")
 local ModManager = require("src.core.ModManager")
 local SaveManager = require("src.core.SaveManager")
 local Router = require("src.core.Router")
+local MobileBridge = require("src.core.MobileBridge")
 
 local Header = require("src.ui.Header")
 local GameSelector = require("src.ui.GameSelector")
 local GameDetailsView = require("src.ui.GameDetailsView")
 local CartridgeRenderer = require("src.ui.CartridgeRenderer")
+local TouchOverlay = require("src.ui.TouchOverlay")
 local ModsModal = require("src.ui.ModsModal")
 local SavesModal = require("src.ui.SavesModal")
 
@@ -19,6 +21,8 @@ local modalHitboxes = {}
 function love.load(args)
     Theme.init()
     Config.load()
+    MobileBridge.init()
+    TouchOverlay.init()
 
     -- Automated verification test mode
     for _, a in ipairs(args or {}) do
@@ -113,9 +117,16 @@ function love.draw()
 
     -- 7. Router Launch Overlay
     Router.drawOverlay(w, h, Theme)
+
+    -- 8. Mobile Virtual Touch Controls Overlay
+    if MobileBridge.virtualControlsEnabled then
+        local isGba = (selectedGame and selectedGame.platform == "gba")
+        TouchOverlay.draw(w, h, Theme, isGba)
+    end
 end
 
 function love.mousepressed(x, y, button)
+    local w = love.graphics.getWidth()
     if button ~= 1 then return end
 
     -- A. If modal is open, handle modal events
@@ -164,8 +175,9 @@ function love.mousepressed(x, y, button)
         return
     end
 
-    -- B. Header Platform Tabs
-    local clickedPlatform = Header.mousepressed(x, y, Config.selectedPlatform)
+    -- B. Header Platform Tabs & Touch Toggle
+    local clickedPlatform, toggledTouch = Header.mousepressed(x, y, Config.selectedPlatform, w)
+    if toggledTouch then return end
     if clickedPlatform then
         Config.selectedPlatform = clickedPlatform
         Config.save()
@@ -251,5 +263,29 @@ function love.keypressed(key)
         local g = PlatformManager.getGameById(Config.selectedGameId)
         g.currentSlot = slotNum
         SaveManager.selectSlot(Config.selectedGameId, slotNum)
+    elseif key == "t" then
+        MobileBridge.toggleControls()
     end
 end
+
+function love.touchpressed(id, x, y, dx, dy, pressure)
+    if MobileBridge.virtualControlsEnabled then
+        local btn = TouchOverlay.touchpressed(id, x, y, dx, dy, pressure)
+        if btn then return end
+    end
+    -- Fallback to standard mouse press for UI interaction
+    love.mousepressed(x, y, 1)
+end
+
+function love.touchmoved(id, x, y, dx, dy, pressure)
+    if MobileBridge.virtualControlsEnabled then
+        TouchOverlay.touchmoved(id, x, y, dx, dy, pressure)
+    end
+end
+
+function love.touchreleased(id, x, y, dx, dy, pressure)
+    if MobileBridge.virtualControlsEnabled then
+        TouchOverlay.touchreleased(id, x, y, dx, dy, pressure)
+    end
+end
+

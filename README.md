@@ -24,6 +24,10 @@ Central unificada de alto desempenho para execução, gerenciamento de saves, su
 - 🧩 **Gerenciador de Mods por Jogo (`ModManager.lua`):**
   - Modal interativo com toggles em tempo real (`M`).
   - Suporte a traduções PT-BR, Exp Share moderno, texto instantâneo, sapatos de corrida em interiores, etc.
+- 📱 **Suporte Nativo a Mobile & Controles Touch (`TouchOverlay.lua`):**
+  - Controles táteis virtuais responsivos com D-Pad, botões A/B, L/R de ombro, Start e Select.
+  - Suporte completo a **Multi-touch** (andar e correr ao mesmo tempo).
+  - Ativação automática no Android/iOS ou via botão `📱 TOUCH` / tecla `T` no desktop.
 - 💾 **Gerenciador de Save Slots (`SaveManager.lua`):**
   - Até 4 slots independentes por jogo (`S1` a `S4`) com troca rápida via teclado (`1-4`) ou clique.
 
@@ -41,13 +45,15 @@ Central unificada de alto desempenho para execução, gerenciamento de saves, su
 
 ## ⌨️ Controles & Atalhos
 
-| Tecla / Ação | Função |
+| Tecla / Toque | Função |
 | :--- | :--- |
-| `Tab` | Alternar entre filtros de plataformas (`TODOS` ➜ `GBC` ➜ `GBA`) |
-| `Enter` / `Espaço` | Iniciar o jogo selecionado no motor correspondente |
-| `M` | Abrir / Fechar gaveta de Gerenciamento de Mods |
-| `S` | Abrir / Fechar gaveta de Gerenciamento de Saves |
+| `Tab` / `SELECT` | Alternar entre filtros de plataformas (`TODOS` ➜ `GBC` ➜ `GBA`) |
+| `Enter` / `Espaço` / Botão `A` | Iniciar o jogo selecionado no motor correspondente |
+| `M` / Botão `MODS` | Abrir / Fechar gaveta de Gerenciamento de Mods |
+| `S` / Botão `SAVES` | Abrir / Fechar gaveta de Gerenciamento de Saves |
 | `1`, `2`, `3`, `4` | Selecionar Slot de Gravação ativo diretamente |
+| `T` / Botão `📱 TOUCH` | Ativar / Desativar controles virtuais na tela |
+| `Esc` / Botão `B` | Fechar modal aberto ou voltar |
 | `Esc` | Fechar modal aberto ou sair do Hub |
 
 ---

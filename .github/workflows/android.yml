@@ -1,0 +1,78 @@
+name: Build Android APK & LOVE Package
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: Build Android APK & .love
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Package game.love payload
+        run: |
+          mkdir -p build/dist
+          zip -9 -r build/dist/RetroRecompHub.love \
+            main.lua \
+            conf.lua \
+            README.md \
+            LICENSE \
+            src \
+            mods \
+            assets \
+            -x "*.git*" "*.DS_Store*" "*__pycache__*" "*.sav*" "*.gba" "*.gbc" "emulator/*"
+
+      - name: Upload .love standalone package
+        uses: actions/upload-artifact@v4
+        with:
+          name: RetroRecompHub-love-package
+          path: build/dist/RetroRecompHub.love
+
+      - name: Clone love-android base (v11.5a)
+        run: |
+          git clone --depth 1 --branch 11.5a --recurse-submodules --shallow-submodules \
+            https://github.com/love2d/love-android.git android-builder
+          rm -rf android-builder/.git android-builder/love/src/jni/love/.git
+
+      - name: Inject game.love and customize branding
+        run: |
+          mkdir -p android-builder/app/src/embed/assets
+          cp build/dist/RetroRecompHub.love android-builder/app/src/embed/assets/game.love
+
+          # Configure application ID and branding in gradle.properties
+          sed -i 's/^app.application_id=.*/app.application_id=com.guuhferiani.retrorecomphub/' android-builder/gradle.properties
+          sed -i 's/^app.name=.*/app.name=RetroRecomp Hub/' android-builder/gradle.properties
+          sed -i 's/^app.orientation=.*/app.orientation=sensorLandscape/' android-builder/gradle.properties
+
+      - name: Build Android Debug APK
+        working-directory: android-builder
+        run: |
+          chmod +x gradlew
+          ./gradlew assembleEmbedNoRecordDebug --stacktrace
+
+      - name: Collect and rename APK
+        run: |
+          mkdir -p build/apk
+          cp android-builder/app/build/outputs/apk/embedNoRecord/debug/*.apk build/apk/RetroRecompHub-debug.apk
+
+      - name: Upload Android APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: RetroRecompHub-Android-APK
+          path: build/apk/RetroRecompHub-debug.apk

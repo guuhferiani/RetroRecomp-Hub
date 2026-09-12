@@ -67,3 +67,8 @@ $RECYCLE.BIN/
 user_config.json
 options.lua
 options.local.lua
+
+# 8. Local Build Outputs
+dist/
+build/
+*.love
