@@ -70,14 +70,14 @@ function GameDetailsView.draw(game, x, y, w, h, Theme, ModManager, SaveManager, 
         featX = featX + fw + 8
     end
 
-    -- Action Buttons (PLAY, MODS, SAVES)
-    local btnY = infoY + 230
-    local playW, playH = 220, 52
+    -- Action Buttons (Play, Mods, Saves, Shaders)
+    local btnY = h - 75
+    local playW = 160
+    local playH = 50
     local isPlayHover = (mx >= infoX and mx <= infoX + playW and my >= btnY and my <= btnY + playH)
 
-    -- Big Glowing PLAY Button
     local playColor = (game.platform == "gba") and (isPlayHover and Theme.colors.buttonPlayGbaHover or Theme.colors.buttonPlayGba)
-                                               or (isPlayHover and Theme.colors.buttonPlayHover or Theme.colors.buttonPlay)
+                                                or (isPlayHover and Theme.colors.buttonPlayHover or Theme.colors.buttonPlay)
     love.graphics.setColor(playColor)
     love.graphics.rectangle("fill", infoX, btnY, playW, playH, 12, 12)
 
@@ -86,8 +86,8 @@ function GameDetailsView.draw(game, x, y, w, h, Theme, ModManager, SaveManager, 
     love.graphics.printf("▶  JOGAR", infoX, btnY + 15, playW, "center")
 
     -- Mods Button
-    local modsX = infoX + playW + 15
-    local modsW = 160
+    local modsX = infoX + playW + 12
+    local modsW = 135
     local isModsHover = (mx >= modsX and mx <= modsX + modsW and my >= btnY and my <= btnY + playH)
     Theme.drawCard(modsX, btnY, modsW, playH, 12, isModsHover, false, accent)
 
@@ -97,8 +97,8 @@ function GameDetailsView.draw(game, x, y, w, h, Theme, ModManager, SaveManager, 
     love.graphics.printf("🧩 MODS (" .. activeCount .. ")", modsX, btnY + 16, modsW, "center")
 
     -- Saves Button
-    local savesX = modsX + modsW + 15
-    local savesW = 140
+    local savesX = modsX + modsW + 12
+    local savesW = 120
     local isSavesHover = (mx >= savesX and mx <= savesX + savesW and my >= btnY and my <= btnY + playH)
     Theme.drawCard(savesX, btnY, savesW, playH, 12, isSavesHover, false, accent)
 
@@ -106,11 +106,22 @@ function GameDetailsView.draw(game, x, y, w, h, Theme, ModManager, SaveManager, 
     love.graphics.setFont(Theme.fonts.body)
     love.graphics.printf("💾 SAVES", savesX, btnY + 16, savesW, "center")
 
+    -- Shaders Button
+    local shadersX = savesX + savesW + 12
+    local shadersW = 130
+    local isShadersHover = (mx >= shadersX and mx <= shadersX + shadersW and my >= btnY and my <= btnY + playH)
+    Theme.drawCard(shadersX, btnY, shadersW, playH, 12, isShadersHover, false, Theme.colors.accentGold)
+
+    love.graphics.setColor(Theme.colors.accentGold)
+    love.graphics.setFont(Theme.fonts.body)
+    love.graphics.printf("⚡ SHADERS", shadersX, btnY + 16, shadersW, "center")
+
     -- Return click bounding boxes
     return {
         play = { x = infoX, y = btnY, w = playW, h = playH },
         mods = { x = modsX, y = btnY, w = modsW, h = playH },
         saves = { x = savesX, y = btnY, w = savesW, h = playH },
+        shaders = { x = shadersX, y = btnY, w = shadersW, h = playH },
         slotArea = { startX = slotStartX, y = slotY, w = slotBtnW, h = slotBtnH }
     }
 end

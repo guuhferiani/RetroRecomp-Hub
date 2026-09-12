@@ -7,7 +7,7 @@
   <img src="https://img.shields.io/badge/Platform-Windows%20%7C%20Android-0078D6?style=for-the-badge&logo=android&logoColor=white" />
   <img src="https://img.shields.io/badge/LÖVE2D-11.5-E64980?style=for-the-badge&logo=lua&logoColor=white" />
   <img src="https://img.shields.io/badge/Language-Lua%20100%25-2C2D72?style=for-the-badge&logo=lua&logoColor=white" />
-  <img src="https://img.shields.io/badge/Consoles-GB%20%7C%20GBC%20%7C%20GBA-7B2CBF?style=for-the-badge" />
+  <img src="https://img.shields.io/badge/Consoles-GB%20%7C%20GBC%20%7C%20GBA%20%7C%20SNES%20%7C%20PS1-7B2CBF?style=for-the-badge" />
 </p>
 
 Central unificada de alto desempenho para execução, gerenciamento de saves, suporte a mods e visualização procedural de projetos recompilados e jogos clássicos retrô.
@@ -16,21 +16,22 @@ Central unificada de alto desempenho para execução, gerenciamento de saves, su
 
 ## 🌟 Funcionalidades Principais
 
-- 🕹️ **Frontend Unificado Multiconsole:** Navegação intuitiva com abas por plataforma (`TODOS`, `GB / GBC`, `GBA`).
-- 📼 **Renderizador Procedural de Cartuchos (Efeito Parallax 3D):**
-  - **Game Boy / GBC:** Formato vertical clássico, chanfro superior, concavidade Nintendo, adesivo e reflexo holográfico animado.
-  - **Game Boy Advance:** Design horizontal widescreen com textura lateral de pegada e relevo metálico.
-  - **Parallax:** Os cartuchos se inclinam e reagem dinamicamente ao movimento do mouse.
+- 🕹️ **Frontend Unificado Multiconsole:** Navegação rápida por abas (`TODOS`, `GB/GBC`, `GBA`, `SNES`, `PS1`).
+- 📼 **Renderizadores Procedurais de Mídias Clássicas (Efeito Parallax 3D):**
+  - **Game Boy / GBC:** Formato vertical clássico, chanfro superior, concavidade Nintendo e adesivo holográfico.
+  - **Game Boy Advance:** Design horizontal widescreen com pegada texturizada e relevo metálico.
+  - **Super Nintendo (SNES):** Cartucho cinza em dois tons, chanfro inferior e relevo de ventilação.
+  - **PlayStation 1 (PS1):** Estojo de acrílico *Jewel Case* com o lendário **Black Disc de CD-ROM** e reflexos prismáticos.
+- ⚡ **Seletor de Shaders e Filtros em Tempo Real (`ShaderManager.lua`):**
+  - Simulações autênticas: *CRT Trinitron Scanlines*, *LCD Grid Portátil*, *Scale4x / xBRZ HD*, *GBA Color Boost* e *Retro Vignette*.
+  - Alternância imediata via tecla `F` ou botão dedicado de Shaders.
 - 🚀 **Roteador Inteligente de Execução (`Router.lua`):**
   - Disparo assíncrono em segundo plano com overlay de carregamento integrado.
-  - Motor integrado **mGBA** com suporte a filtros e shaders modernos (LCD, CRT, Scale4x).
+  - Suporte ao motor integrado **mGBA** e preparação para núcleos de SNES e PS1.
 - 🧩 **Gerenciador de Mods por Jogo (`ModManager.lua`):**
-  - Modal interativo com toggles em tempo real (`M`).
-  - Suporte a traduções PT-BR, Exp Share moderno, texto instantâneo, sapatos de corrida em interiores, etc.
+  - Modal interativo com switches on/off em tempo real (`M`).
 - 📱 **Suporte Nativo a Mobile & Controles Touch (`TouchOverlay.lua`):**
-  - Controles táteis virtuais responsivos com D-Pad, botões A/B, L/R de ombro, Start e Select.
-  - Suporte completo a **Multi-touch** (andar e correr ao mesmo tempo).
-  - Ativação automática no Android/iOS ou via botão `📱 TOUCH` / tecla `T` no desktop.
+  - D-Pad, botões A/B, L/R de ombro, Start e Select com multi-touch.
 - 💾 **Gerenciador de Save Slots (`SaveManager.lua`):**
   - Até 4 slots independentes por jogo (`S1` a `S4`) com troca rápida via teclado (`1-4`) ou clique.
 
@@ -43,6 +44,8 @@ Central unificada de alto desempenho para execução, gerenciamento de saves, su
 | **GBC** | Pokémon Crystal Version | mGBA / Gen1Recomp | Tradução PT-BR v1.3.0, Kanto Full 251, 60 FPS |
 | **GBC** | Pokémon Yellow Version | mGBA / Gen1Recomp | Pikachu Follower, Fast Text, Corrida Automática |
 | **GBA** | Pokémon FireRed Version | mGBA (32-bit) | Shaders LCD/CRT, Exp Share moderno, TMs infinitos |
+| **SNES** | Super Mario World | snes9x | Mode 7, 96 Saídas Secretas, Filtros Analógicos |
+| **PS1** | Castlevania: Symphony of the Night | duckstation | Áudio Redbook CD, Castelo Invertido 200.6%, Dublagem PT-BR |
 
 ---
 
@@ -50,8 +53,9 @@ Central unificada de alto desempenho para execução, gerenciamento de saves, su
 
 | Tecla / Toque | Função |
 | :--- | :--- |
-| `Tab` / `SELECT` | Alternar entre filtros de plataformas (`TODOS` ➜ `GBC` ➜ `GBA`) |
+| `Tab` / `SELECT` | Alternar entre filtros de plataformas (`TODOS` ➜ `GBC` ➜ `GBA` ➜ `SNES` ➜ `PS1`) |
 | `Enter` / `Espaço` / Botão `A` | Iniciar o jogo selecionado no motor correspondente |
+| `F` / Botão `⚡ SHADERS` | Abrir / Fechar Seletor de Shaders e Filtros Analógicos |
 | `M` / Botão `MODS` | Abrir / Fechar gaveta de Gerenciamento de Mods |
 | `S` / Botão `SAVES` | Abrir / Fechar gaveta de Gerenciamento de Saves |
 | `1`, `2`, `3`, `4` | Selecionar Slot de Gravação ativo diretamente |
@@ -64,40 +68,7 @@ Central unificada de alto desempenho para execução, gerenciamento de saves, su
 ## 🚀 Como Executar
 
 ### Pré-requisitos
-- [LÖVE 11.5+](https://love2d.org/) instalado no sistema.
-
-### Inicialização Rápida
-- Dê um **duplo clique no arquivo `Play-Hub.bat`**, ou
-- Pelo terminal:
-  ```bash
-  love "RetroRecomp Hub"
-  ```
-
-### Verificação Automatizada
-Para rodar os testes unitários e de resolução de caminhos:
-```bash
-love "RetroRecomp Hub" --verify
-love "RetroRecomp Hub" --test
-```
-
----
-
-## 📁 Estrutura do Projeto
-
-```text
-RetroRecomp Hub/
-├── Play-Hub.bat              # Inicializador rápido para Windows
-├── conf.lua                  # Configurações de janela (1120x700, MSAA 4x, HighDPI)
-├── main.lua                  # Loop principal de eventos do LÖVE2D
-├── emulator/                 # Motor mGBA integrado, shaders e configurações
-├── roms/
-│   ├── gbc/                  # ROMs de Game Boy / Game Boy Color
-│   └── gba/                  # ROMs de Game Boy Advance
-├── src/
-│   ├── core/                 # Theme, Router, PlatformManager, ModManager, SaveManager
-│   └── ui/                   # CartridgeRenderer, GameSelector, GameDetailsView, Modals
-└── mods/                     # Pacotes e manifestos de modificações
-```
+- [LÖVE 11.5+](https://love2d.org/) instalado no sistema (ou execute diretamente via `Play-Hub.bat`).
 
 ---
 
