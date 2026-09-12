@@ -1,10 +1,13 @@
 # RetroRecomp Hub 🎮✨
 
 <p align="center">
-  <img src="https://img.shields.io/badge/Platform-Windows-0078D6?style=for-the-badge&logo=windows&logoColor=white" />
+  <a href="https://github.com/guuhferiani/RetroRecomp-Hub/actions/workflows/android.yml">
+    <img src="https://github.com/guuhferiani/RetroRecomp-Hub/actions/workflows/android.yml/badge.svg" alt="Build Status" />
+  </a>
+  <img src="https://img.shields.io/badge/Platform-Windows%20%7C%20Android-0078D6?style=for-the-badge&logo=android&logoColor=white" />
   <img src="https://img.shields.io/badge/LÖVE2D-11.5-E64980?style=for-the-badge&logo=lua&logoColor=white" />
+  <img src="https://img.shields.io/badge/Language-Lua%20100%25-2C2D72?style=for-the-badge&logo=lua&logoColor=white" />
   <img src="https://img.shields.io/badge/Consoles-GB%20%7C%20GBC%20%7C%20GBA-7B2CBF?style=for-the-badge" />
-  <img src="https://img.shields.io/badge/Recomp-Native%20Port-10B981?style=for-the-badge" />
 </p>
 
 Central unificada de alto desempenho para execução, gerenciamento de saves, suporte a mods e visualização procedural de projetos recompilados e jogos clássicos retrô.

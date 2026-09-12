@@ -1,0 +1,3 @@
+# Inform GitHub Linguist to treat third-party emulator binaries and shaders as vendored
+emulator/** linguist-vendored
+dist/** linguist-vendored
