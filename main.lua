@@ -20,12 +20,64 @@ local currentModal = nil -- nil, "mods", "saves", "shaders"
 local actionHitboxes = {}
 local modalHitboxes = {}
 
+-- Virtual resolution & responsive scaling
+local uiScale = 1.0
+local virtualW = 1280
+local virtualH = 720
+local safeLeft = 0
+local safeRight = 0
+
+local function updateViewport()
+    local realW, realH = love.graphics.getDimensions()
+    realW = math.max(320, realW)
+    realH = math.max(240, realH)
+
+    uiScale = math.max(0.5, realH / 720)
+    virtualW = math.floor(realW / uiScale)
+    virtualH = 720
+
+    if love.window and love.window.getSafeArea then
+        local sx, sy, sw, sh = love.window.getSafeArea()
+        safeLeft = math.floor(sx / uiScale)
+        safeRight = math.floor(math.max(0, realW - (sx + sw)) / uiScale)
+    else
+        safeLeft = 0
+        safeRight = 0
+    end
+end
+
+-- Virtual mouse coordinate mapping (converts physical pixels to virtual UI coords)
+local origGetMousePos = love.mouse.getPosition
+local origGetMouseX = love.mouse.getX
+local origGetMouseY = love.mouse.getY
+
+function love.mouse.getPosition()
+    local mx, my = origGetMousePos()
+    return mx / uiScale, my / uiScale
+end
+
+function love.mouse.getX()
+    return origGetMouseX() / uiScale
+end
+
+function love.mouse.getY()
+    return origGetMouseY() / uiScale
+end
+
 function love.load(args)
     Theme.init()
     Config.load()
     MobileBridge.init()
     TouchOverlay.init()
     ShaderManager.init(Config.activeShader)
+
+    -- Set window icon if available
+    if love.filesystem and love.filesystem.getInfo and love.filesystem.getInfo("assets/icon.png") then
+        local status, iconData = pcall(love.image.newImageData, "assets/icon.png")
+        if status and iconData and love.window and love.window.setIcon then
+            love.window.setIcon(iconData)
+        end
+    end
 
     -- Automated verification test mode
     for _, a in ipairs(args or {}) do
@@ -86,7 +138,12 @@ function love.update(dt)
 end
 
 function love.draw()
-    local w, h = love.graphics.getDimensions()
+    updateViewport()
+
+    love.graphics.push()
+    love.graphics.scale(uiScale, uiScale)
+
+    local w, h = virtualW, virtualH
 
     -- 1. Background Fill & Subtle Pattern
     love.graphics.setColor(Theme.colors.bg)
@@ -97,17 +154,20 @@ function love.draw()
     for x = 0, w, 40 do love.graphics.line(x, 0, x, h) end
     for y = 0, h, 40 do love.graphics.line(0, y, w, y) end
 
+    -- Content layout with safe areas
+    local contentX = safeLeft
+    local contentW = w - safeLeft - safeRight
+
     -- 2. Header Bar
-    local headerH = Header.draw(w, Config.selectedPlatform, Theme)
+    local headerH = Header.draw(w, Config.selectedPlatform, Theme, safeLeft, safeRight)
 
     -- 3. Filtered Games & Active Game
     local availableGames = PlatformManager.getGamesByPlatform(Config.selectedPlatform)
     local selectedGame = PlatformManager.getGameById(Config.selectedGameId)
 
-    -- If current game is not in filtered platform, default to first available
     local gameFound = false
     for _, g in ipairs(availableGames) do
-        if g.id == selectedGame.id then gameFound = true break end
+        if selectedGame and g.id == selectedGame.id then gameFound = true break end
     end
     if not gameFound and #availableGames > 0 then
         selectedGame = availableGames[1]
@@ -115,20 +175,24 @@ function love.draw()
     end
 
     -- 4. Left Sidebar: Game List
-    local sidebarW = 320
-    GameSelector.draw(availableGames, selectedGame.id, 0, headerH, sidebarW, h - headerH, Theme, ModManager)
+    local sidebarW = math.max(260, math.min(340, math.floor(contentW * 0.28)))
+    if selectedGame then
+        GameSelector.draw(availableGames, selectedGame.id, contentX, headerH, sidebarW, h - headerH, Theme, ModManager)
+    end
 
     -- 5. Main Area: Game Details & 3D/Interactive Cartridge
-    local detailsX = sidebarW
-    local detailsW = w - sidebarW
-    actionHitboxes = GameDetailsView.draw(selectedGame, detailsX, headerH, detailsW, h - headerH, Theme, ModManager, SaveManager, CartridgeRenderer)
+    local detailsX = contentX + sidebarW
+    local detailsW = contentW - sidebarW
+    if selectedGame then
+        actionHitboxes = GameDetailsView.draw(selectedGame, detailsX, headerH, detailsW, h - headerH, Theme, ModManager, SaveManager, CartridgeRenderer)
+    end
 
     -- 6. Modals (Mods / Saves / Shaders)
-    if currentModal == "mods" then
+    if currentModal == "mods" and selectedGame then
         modalHitboxes = ModsModal.draw(selectedGame, w, h, Theme, ModManager)
-    elseif currentModal == "saves" then
+    elseif currentModal == "saves" and selectedGame then
         modalHitboxes = SavesModal.draw(selectedGame, w, h, Theme, SaveManager)
-    elseif currentModal == "shaders" then
+    elseif currentModal == "shaders" and selectedGame then
         modalHitboxes = ShaderModal.draw(selectedGame, w, h, Theme, ShaderManager)
     end
 
@@ -140,11 +204,17 @@ function love.draw()
         local isGba = (selectedGame and selectedGame.platform == "gba")
         TouchOverlay.draw(w, h, Theme, isGba)
     end
+
+    love.graphics.pop()
 end
 
-function love.mousepressed(x, y, button)
-    local w = love.graphics.getWidth()
+function love.mousepressed(screenX, screenY, button)
     if button ~= 1 then return end
+    updateViewport()
+    local x = screenX / uiScale
+    local y = screenY / uiScale
+    local w = virtualW
+    local h = virtualH
 
     -- A. If modal is open, handle modal events
     if currentModal == "mods" and modalHitboxes then
@@ -215,7 +285,7 @@ function love.mousepressed(x, y, button)
     end
 
     -- B. Header Platform Tabs & Touch Toggle
-    local clickedPlatform, toggledTouch = Header.mousepressed(x, y, Config.selectedPlatform, w)
+    local clickedPlatform, toggledTouch = Header.mousepressed(x, y, Config.selectedPlatform, w, safeLeft, safeRight)
     if toggledTouch then return end
     if clickedPlatform then
         Config.selectedPlatform = clickedPlatform
@@ -224,8 +294,11 @@ function love.mousepressed(x, y, button)
     end
 
     -- C. Sidebar Game Selection
+    local contentX = safeLeft
+    local contentW = w - safeLeft - safeRight
+    local sidebarW = math.max(260, math.min(340, math.floor(contentW * 0.28)))
     local availableGames = PlatformManager.getGamesByPlatform(Config.selectedPlatform)
-    local clickedGameId = GameSelector.mousepressed(availableGames, x, y, 0, 64, 320)
+    local clickedGameId = GameSelector.mousepressed(availableGames, x, y, contentX, 64, sidebarW)
     if clickedGameId then
         Config.selectedGameId = clickedGameId
         Config.save()
@@ -271,7 +344,7 @@ function love.mousepressed(x, y, button)
         if actionHitboxes.slotArea then
             local sa = actionHitboxes.slotArea
             for slot = 1, 4 do
-                local sx = sa.startX + (slot - 1) * (sa.w + 10)
+                local sx = sa.startX + (slot - 1) * (sa.w + 8)
                 if x >= sx and x <= sx + sa.w and y >= sa.y and y <= sa.y + sa.h then
                     local g = PlatformManager.getGameById(Config.selectedGameId)
                     g.currentSlot = slot
@@ -319,24 +392,43 @@ function love.keypressed(key)
     end
 end
 
-function love.touchpressed(id, x, y, dx, dy, pressure)
+function love.touchpressed(id, tx, ty, dx, dy, pressure)
+    updateViewport()
+    local realW, realH = love.graphics.getDimensions()
+    local px = (tx <= 1.0 and tx >= 0.0) and (tx * realW) or tx
+    local py = (ty <= 1.0 and ty >= 0.0) and (ty * realH) or ty
+    local vx = px / uiScale
+    local vy = py / uiScale
+
     if MobileBridge.virtualControlsEnabled then
-        local btn = TouchOverlay.touchpressed(id, x, y, dx, dy, pressure)
+        local btn = TouchOverlay.touchpressed(id, vx, vy, dx, dy, pressure)
         if btn then return end
     end
     -- Fallback to standard mouse press for UI interaction
-    love.mousepressed(x, y, 1)
+    love.mousepressed(px, py, 1)
 end
 
-function love.touchmoved(id, x, y, dx, dy, pressure)
+function love.touchmoved(id, tx, ty, dx, dy, pressure)
     if MobileBridge.virtualControlsEnabled then
-        TouchOverlay.touchmoved(id, x, y, dx, dy, pressure)
+        updateViewport()
+        local realW, realH = love.graphics.getDimensions()
+        local px = (tx <= 1.0 and tx >= 0.0) and (tx * realW) or tx
+        local py = (ty <= 1.0 and ty >= 0.0) and (ty * realH) or ty
+        local vx = px / uiScale
+        local vy = py / uiScale
+        TouchOverlay.touchmoved(id, vx, vy, dx, dy, pressure)
     end
 end
 
-function love.touchreleased(id, x, y, dx, dy, pressure)
+function love.touchreleased(id, tx, ty, dx, dy, pressure)
     if MobileBridge.virtualControlsEnabled then
-        TouchOverlay.touchreleased(id, x, y, dx, dy, pressure)
+        updateViewport()
+        local realW, realH = love.graphics.getDimensions()
+        local px = (tx <= 1.0 and tx >= 0.0) and (tx * realW) or tx
+        local py = (ty <= 1.0 and ty >= 0.0) and (ty * realH) or ty
+        local vx = px / uiScale
+        local vy = py / uiScale
+        TouchOverlay.touchreleased(id, vx, vy, dx, dy, pressure)
     end
 end
 
