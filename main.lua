@@ -79,6 +79,11 @@ function love.load(args)
         end
     end
 
+    -- Fullscreen immersive mode on Android to use edge-to-edge display
+    if MobileBridge.isMobile() and love.window and love.window.setFullscreen then
+        pcall(love.window.setFullscreen, true)
+    end
+
     -- Automated verification test mode
     for _, a in ipairs(args or {}) do
         if a == "--test" then
@@ -288,6 +293,7 @@ function love.mousepressed(screenX, screenY, button)
     local clickedPlatform, toggledTouch = Header.mousepressed(x, y, Config.selectedPlatform, w, safeLeft, safeRight)
     if toggledTouch then return end
     if clickedPlatform then
+        MobileBridge.hapticFeedback(0.018)
         Config.selectedPlatform = clickedPlatform
         Config.save()
         return
@@ -300,6 +306,7 @@ function love.mousepressed(screenX, screenY, button)
     local availableGames = PlatformManager.getGamesByPlatform(Config.selectedPlatform)
     local clickedGameId = GameSelector.mousepressed(availableGames, x, y, contentX, 64, sidebarW)
     if clickedGameId then
+        MobileBridge.hapticFeedback(0.018)
         Config.selectedGameId = clickedGameId
         Config.save()
         return
@@ -311,6 +318,7 @@ function love.mousepressed(screenX, screenY, button)
         if actionHitboxes.play then
             local p = actionHitboxes.play
             if x >= p.x and x <= p.x + p.w and y >= p.y and y <= p.y + p.h then
+                MobileBridge.hapticFeedback(0.035)
                 local g = PlatformManager.getGameById(Config.selectedGameId)
                 Router.launchGame(g, g.currentSlot or 1)
                 return
@@ -320,6 +328,7 @@ function love.mousepressed(screenX, screenY, button)
         if actionHitboxes.mods then
             local m = actionHitboxes.mods
             if x >= m.x and x <= m.x + m.w and y >= m.y and y <= m.y + m.h then
+                MobileBridge.hapticFeedback(0.020)
                 currentModal = "mods"
                 return
             end
@@ -328,6 +337,7 @@ function love.mousepressed(screenX, screenY, button)
         if actionHitboxes.saves then
             local s = actionHitboxes.saves
             if x >= s.x and x <= s.x + s.w and y >= s.y and y <= s.y + s.h then
+                MobileBridge.hapticFeedback(0.020)
                 currentModal = "saves"
                 return
             end
@@ -336,6 +346,7 @@ function love.mousepressed(screenX, screenY, button)
         if actionHitboxes.shaders then
             local sh = actionHitboxes.shaders
             if x >= sh.x and x <= sh.x + sh.w and y >= sh.y and y <= sh.y + sh.h then
+                MobileBridge.hapticFeedback(0.020)
                 currentModal = "shaders"
                 return
             end
@@ -346,6 +357,7 @@ function love.mousepressed(screenX, screenY, button)
             for slot = 1, 4 do
                 local sx = sa.startX + (slot - 1) * (sa.w + 8)
                 if x >= sx and x <= sx + sa.w and y >= sa.y and y <= sa.y + sa.h then
+                    MobileBridge.hapticFeedback(0.015)
                     local g = PlatformManager.getGameById(Config.selectedGameId)
                     g.currentSlot = slot
                     SaveManager.selectSlot(Config.selectedGameId, slot)
