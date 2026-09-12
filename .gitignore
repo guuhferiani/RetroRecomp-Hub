@@ -1,0 +1,25 @@
+# ROM files (legal compliance - do not distribute copyrighted commercial ROMs)
+*.gba
+*.gbc
+*.gb
+*.zip
+*.7z
+
+# Battery Save files & runtime states (personal player saves)
+*.sav
+*.sa1
+*.sa2
+
+# Logs and crash dumps
+*.log
+error.log
+crash.dmp
+
+# OS & IDE metadata
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# User config local overrides
+user_config.json

@@ -1,0 +1,9 @@
+{
+  "id": "exp_share_modern",
+  "name": "Exp. Share Moderno (Gen 6+)",
+  "author": "GbaQoL",
+  "version": "1.0.4",
+  "type": "script",
+  "category": "Mecânica QoL",
+  "description": "Distribui pontos de experiência para todos os Pokémon da equipe automaticamente."
+}

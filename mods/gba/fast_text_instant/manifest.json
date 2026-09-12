@@ -1,0 +1,9 @@
+{
+  "id": "fast_text_instant",
+  "name": "Texto Instantâneo",
+  "author": "SpeedMod",
+  "version": "2.0.0",
+  "type": "script",
+  "category": "Velocidade",
+  "description": "Exibe caixas de diálogo e mensagens de batalha instantaneamente sem delay."
+}

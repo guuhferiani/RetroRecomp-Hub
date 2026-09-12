@@ -1,0 +1,9 @@
+{
+  "id": "reusable_tms",
+  "name": "TMs Infinitos (Reutilizáveis)",
+  "author": "ModernGen",
+  "version": "1.0.0",
+  "type": "script",
+  "category": "Mecânica QoL",
+  "description": "TMs não quebram após o uso, funcionando como nas gerações modernas da franquia."
+}
