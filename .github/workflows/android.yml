@@ -82,36 +82,45 @@ jobs:
       - name: Collect and rename APK
         run: |
           mkdir -p build/apk
-          cp android-builder/app/build/outputs/apk/embedNoRecord/debug/*.apk build/apk/RetroRecompHub-v1.0.1.apk
-          cp build/apk/RetroRecompHub-v1.0.1.apk build/apk/RetroRecompHub-debug.apk
+          cp android-builder/app/build/outputs/apk/embedNoRecord/debug/*.apk build/apk/RetroRecompHub-v1.1.0.apk
+          cp build/apk/RetroRecompHub-v1.1.0.apk build/apk/RetroRecompHub-debug.apk
 
       - name: Upload Android APK
         uses: actions/upload-artifact@v4
         with:
           name: RetroRecompHub-Android-APK
-          path: build/apk/RetroRecompHub-v1.0.1.apk
+          path: build/apk/RetroRecompHub-v1.1.0.apk
 
-      - name: Create Official GitHub Release (v1.0.1)
+      - name: Create Official GitHub Release (v1.1.0)
         if: github.ref == 'refs/heads/main' && github.event_name == 'push'
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: v1.0.1
-          name: "RetroRecomp Hub v1.0.1 🚀 (Hotfix Android)"
+          tag_name: v1.1.0
+          name: "RetroRecomp Hub v1.1.0 📱 (Importador de ROMs & Responsividade Android)"
           body: |
-            ## 🎮 RetroRecomp Hub v1.0.1 — Hotfix Android
+            ## 🎮 RetroRecomp Hub v1.1.0 — Importador de ROMs & Responsividade Android 🚀
 
-            Atualização de correção para inicialização no Android e suporte aprimorado a telas panorâmicas (19.5:9 / 20:9).
+            Nova versão com foco em usabilidade móvel, suporte completo a telas panorâmicas e navegador de arquivos embutido!
 
-            ### 🐛 Correções:
-            - 🔧 **Hotfix de Inicialização:** Corrigido erro de argumento nulo (`bad argument #4 to 'rectangle'`) na renderização dos botões de ação em telas largas / modo paisagem.
-            - 🛡️ **Defensive Rendering:** Adicionadas travas de segurança em `Theme.drawCard` para evitar quebras por parâmetros indefinidos.
+            ### ✨ Novidades desta Versão:
+            - 📥 **Navegador e Importador de ROMs Integrado (`RomManager` / `ImportRomModal`):**
+              - Navegue pelas pastas do celular (`Downloads`, `ROMs`, `Armazenamento Interno`, etc.) e vincule qualquer arquivo compatível (.gbc, .gba, .sfc, .chd) com 1 toque.
+              - Suporte a arrastar e soltar / compartilhar arquivos (`love.filedropped`).
+              - Indicador visual nos cards e detalhes (`✓ ROM INSTALADA` vs `⚠️ ROM AUSENTE`).
+            - 📱 **Responsividade Total no Android:**
+              - Layout elástico compatível com todas as resoluções e proporções (16:9, 18:9, 19.5:9, 20:9 e tablets).
+              - Suporte nativo a *Safe Area* para telas com entalhes (notches) e barras de navegação.
+              - Rolagem vertical por toque (*Touch Scrolling*) na lista de jogos e nos modais.
+              - Cartucho 3D Parallax com redimensionamento proporcional.
 
             ---
             ### 📥 Downloads:
-            - **Android:** Instale o arquivo `RetroRecompHub-v1.0.1.apk` diretamente no seu celular.
-            - **Universal / PC:** Execute o arquivo `RetroRecompHub.love` através do LÖVE 11.5+.
+            - **Android (APK):** Baixe e instale `RetroRecompHub-v1.1.0.apk` diretamente no seu celular Android.
+            - **Universal / PC:** Execute `RetroRecompHub.love` através do LÖVE 11.5+.
           draft: false
           prerelease: false
+          make_latest: true
           files: |
-            build/apk/RetroRecompHub-v1.0.1.apk
+            build/apk/RetroRecompHub-v1.1.0.apk
             build/dist/RetroRecompHub.love
+
