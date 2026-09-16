@@ -6,13 +6,14 @@ function love.conf(t)
     t.window.title = "RetroRecomp Hub"
     t.window.width = 1120
     t.window.height = 700
-    t.window.minwidth = 960
-    t.window.minheight = 600
+    t.window.minwidth = 320
+    t.window.minheight = 240
     t.window.fullscreen = false
     t.window.resizable = true
     t.window.vsync = 1
     t.window.msaa = 4
     t.window.highdpi = true
+    t.window.usedpiscale = true
 
     t.modules.audio = true
     t.modules.data = true

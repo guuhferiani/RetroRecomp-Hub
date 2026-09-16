@@ -5,8 +5,10 @@ function SavesModal.draw(game, w, h, Theme, SaveManager)
     love.graphics.setColor(0, 0, 0, 0.75)
     love.graphics.rectangle("fill", 0, 0, w, h)
 
-    local modalW, modalH = 620, 480
-    local mx_pos, my_pos = (w - modalW) / 2, (h - modalH) / 2
+    local modalW = math.min(640, math.max(340, w - 40))
+    local modalH = math.min(500, math.max(380, h - 40))
+    local mx_pos = math.floor((w - modalW) / 2)
+    local my_pos = math.floor((h - modalH) / 2)
 
     local accent = (game.platform == "gba") and Theme.colors.accentGba or Theme.colors.accentGbc
     Theme.drawCard(mx_pos, my_pos, modalW, modalH, 16, false, true, accent)

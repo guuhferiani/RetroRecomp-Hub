@@ -38,8 +38,24 @@ function Router.findEmulator()
 end
 
 function Router.findRom(game)
+    if not game then return nil end
+    local Config = require("src.core.Config")
+    local custom = Config.customRomPaths and Config.customRomPaths[game.id]
+    if custom and custom ~= "" then
+        local normCustom = normalizePath(custom)
+        if fileExists(normCustom) then
+            return normCustom
+        end
+        if fileExists(custom) then
+            return custom
+        end
+    end
+
     local src = love.filesystem and love.filesystem.getSource() or "."
+    local saveDir = love.filesystem and love.filesystem.getSaveDirectory() or "."
     local candidates = {
+        saveDir .. "/roms/" .. (game.platform or "") .. "/" .. (game.romFile or ""),
+        saveDir .. "/" .. (game.romFile or ""),
         src .. "/" .. (game.romFile or ""),
         game.romFile or "",
         src .. "/" .. (game.romFallback or ""),

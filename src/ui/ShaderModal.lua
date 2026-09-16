@@ -5,9 +5,10 @@ function ShaderModal.draw(selectedGame, screenW, screenH, Theme, ShaderManager)
     love.graphics.setColor(0, 0, 0, 0.75)
     love.graphics.rectangle("fill", 0, 0, screenW, screenH)
 
-    local mw, mh = 660, 490
-    local mx = (screenW - mw) / 2
-    local my = (screenH - mh) / 2
+    local mw = math.min(680, math.max(340, screenW - 40))
+    local mh = math.min(520, math.max(380, screenH - 40))
+    local mx = math.floor((screenW - mw) / 2)
+    local my = math.floor((screenH - mh) / 2)
 
     -- Modal card background
     Theme.drawCard(mx, my, mw, mh, 16, false, true, Theme.colors.accentGold)

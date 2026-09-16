@@ -6,6 +6,7 @@ local SaveManager = require("src.core.SaveManager")
 local Router = require("src.core.Router")
 local MobileBridge = require("src.core.MobileBridge")
 local ShaderManager = require("src.core.ShaderManager")
+local RomManager = require("src.core.RomManager")
 
 local Header = require("src.ui.Header")
 local GameSelector = require("src.ui.GameSelector")
@@ -15,8 +16,9 @@ local TouchOverlay = require("src.ui.TouchOverlay")
 local ModsModal = require("src.ui.ModsModal")
 local SavesModal = require("src.ui.SavesModal")
 local ShaderModal = require("src.ui.ShaderModal")
+local ImportRomModal = require("src.ui.ImportRomModal")
 
-local currentModal = nil -- nil, "mods", "saves", "shaders"
+local currentModal = nil -- nil, "mods", "saves", "shaders", "import"
 local actionHitboxes = {}
 local modalHitboxes = {}
 
@@ -109,6 +111,15 @@ function love.load(args)
             ModManager.toggle("crystal", "ptbr_crystal")
             ModManager.toggle("crystal", "ptbr_crystal")
 
+            -- Test RomManager
+            local quick = RomManager.getQuickPaths()
+            assert(#quick > 0, "Expected quick access paths")
+            assert(RomManager.isSupportedFile("game.gbc") == true, "Expected gbc to be supported")
+            assert(RomManager.isSupportedFile("game.gba") == true, "Expected gba to be supported")
+            assert(RomManager.isSupportedFile("game.sfc") == true, "Expected sfc to be supported")
+            assert(RomManager.isSupportedFile("game.chd") == true, "Expected chd to be supported")
+            assert(RomManager.isSupportedFile("image.png") == false, "Expected png to be unsupported")
+
             -- Test Router
             Router.launchGame(gbcGames[1], 1)
             Router.update(0.016)
@@ -140,6 +151,7 @@ end
 
 function love.update(dt)
     Router.update(dt)
+    ImportRomModal.update(dt)
 end
 
 function love.draw()
@@ -192,13 +204,15 @@ function love.draw()
         actionHitboxes = GameDetailsView.draw(selectedGame, detailsX, headerH, detailsW, h - headerH, Theme, ModManager, SaveManager, CartridgeRenderer)
     end
 
-    -- 6. Modals (Mods / Saves / Shaders)
+    -- 6. Modals (Mods / Saves / Shaders / Import)
     if currentModal == "mods" and selectedGame then
         modalHitboxes = ModsModal.draw(selectedGame, w, h, Theme, ModManager)
     elseif currentModal == "saves" and selectedGame then
         modalHitboxes = SavesModal.draw(selectedGame, w, h, Theme, SaveManager)
     elseif currentModal == "shaders" and selectedGame then
         modalHitboxes = ShaderModal.draw(selectedGame, w, h, Theme, ShaderManager)
+    elseif currentModal == "import" and selectedGame then
+        modalHitboxes = ImportRomModal.draw(selectedGame, w, h, Theme)
     end
 
     -- 7. Router Launch Overlay
@@ -222,7 +236,13 @@ function love.mousepressed(screenX, screenY, button)
     local h = virtualH
 
     -- A. If modal is open, handle modal events
-    if currentModal == "mods" and modalHitboxes then
+    if currentModal == "import" and modalHitboxes then
+        local action = ImportRomModal.mousepressed(x, y, button, modalHitboxes, PlatformManager.getGameById(Config.selectedGameId))
+        if action == "close" then
+            currentModal = nil
+        end
+        return
+    elseif currentModal == "mods" and modalHitboxes then
         if modalHitboxes.closeBtn then
             local cb = modalHitboxes.closeBtn
             if x >= cb.x and x <= cb.x + cb.w and y >= cb.y and y <= cb.y + cb.h then
@@ -289,8 +309,14 @@ function love.mousepressed(screenX, screenY, button)
         return
     end
 
-    -- B. Header Platform Tabs & Touch Toggle
-    local clickedPlatform, toggledTouch = Header.mousepressed(x, y, Config.selectedPlatform, w, safeLeft, safeRight)
+    -- B. Header Platform Tabs, Touch Toggle & Import Button
+    local clickedPlatform, toggledTouch, clickedImport = Header.mousepressed(x, y, Config.selectedPlatform, w, safeLeft, safeRight)
+    if clickedImport then
+        MobileBridge.hapticFeedback(0.020)
+        ImportRomModal.initPath()
+        currentModal = "import"
+        return
+    end
     if toggledTouch then return end
     if clickedPlatform then
         MobileBridge.hapticFeedback(0.018)
@@ -304,7 +330,7 @@ function love.mousepressed(screenX, screenY, button)
     local contentW = w - safeLeft - safeRight
     local sidebarW = math.max(260, math.min(340, math.floor(contentW * 0.28)))
     local availableGames = PlatformManager.getGamesByPlatform(Config.selectedPlatform)
-    local clickedGameId = GameSelector.mousepressed(availableGames, x, y, contentX, 64, sidebarW)
+    local clickedGameId = GameSelector.mousepressed(availableGames, x, y, contentX, 64, sidebarW, h - 64)
     if clickedGameId then
         MobileBridge.hapticFeedback(0.018)
         Config.selectedGameId = clickedGameId
@@ -321,6 +347,16 @@ function love.mousepressed(screenX, screenY, button)
                 MobileBridge.hapticFeedback(0.035)
                 local g = PlatformManager.getGameById(Config.selectedGameId)
                 Router.launchGame(g, g.currentSlot or 1)
+                return
+            end
+        end
+        -- Import Button
+        if actionHitboxes.import then
+            local imp = actionHitboxes.import
+            if x >= imp.x and x <= imp.x + imp.w and y >= imp.y and y <= imp.y + imp.h then
+                MobileBridge.hapticFeedback(0.020)
+                ImportRomModal.initPath()
+                currentModal = "import"
                 return
             end
         end
@@ -355,7 +391,7 @@ function love.mousepressed(screenX, screenY, button)
         if actionHitboxes.slotArea then
             local sa = actionHitboxes.slotArea
             for slot = 1, 4 do
-                local sx = sa.startX + (slot - 1) * (sa.w + 8)
+                local sx = sa.startX + (slot - 1) * (sa.w + 6)
                 if x >= sx and x <= sx + sa.w and y >= sa.y and y <= sa.y + sa.h then
                     MobileBridge.hapticFeedback(0.015)
                     local g = PlatformManager.getGameById(Config.selectedGameId)
@@ -365,6 +401,30 @@ function love.mousepressed(screenX, screenY, button)
                 end
             end
         end
+    end
+end
+
+function love.wheelmoved(dx, dy)
+    updateViewport()
+    if currentModal == "import" then
+        ImportRomModal.wheelmoved(dx, dy)
+    else
+        local mx, my = love.mouse.getPosition()
+        local contentW = virtualW - safeLeft - safeRight
+        local sidebarW = math.max(260, math.min(340, math.floor(contentW * 0.28)))
+        if mx >= safeLeft and mx <= safeLeft + sidebarW then
+            GameSelector.wheelmoved(dx, dy)
+        end
+    end
+end
+
+function love.filedropped(file)
+    local ok, msg = RomManager.handleDroppedFile(file)
+    if ok then
+        MobileBridge.hapticFeedback(0.035)
+        print("[HUB] " .. msg)
+    else
+        print("[HUB] File dropped error: " .. tostring(msg))
     end
 end
 
@@ -394,6 +454,9 @@ function love.keypressed(key)
         currentModal = (currentModal == "saves") and nil or "saves"
     elseif key == "f" then
         currentModal = (currentModal == "shaders") and nil or "shaders"
+    elseif key == "i" then
+        ImportRomModal.initPath()
+        currentModal = (currentModal == "import") and nil or "import"
     elseif key == "1" or key == "2" or key == "3" or key == "4" then
         local slotNum = tonumber(key)
         local g = PlatformManager.getGameById(Config.selectedGameId)
@@ -429,6 +492,21 @@ function love.touchmoved(id, tx, ty, dx, dy, pressure)
         local vx = px / uiScale
         local vy = py / uiScale
         TouchOverlay.touchmoved(id, vx, vy, dx, dy, pressure)
+    else
+        -- Touch scroll in modal or sidebar
+        if currentModal == "import" then
+            local deltaY = (dy or 0)
+            if deltaY and math.abs(deltaY) > 0 then
+                local realH = love.graphics.getHeight()
+                ImportRomModal.touchmoved(deltaY * (realH / uiScale))
+            end
+        else
+            local deltaY = (dy or 0)
+            if deltaY and math.abs(deltaY) > 0 then
+                local realH = love.graphics.getHeight()
+                GameSelector.touchmoved(deltaY * (realH / uiScale))
+            end
+        end
     end
 end
 
@@ -443,4 +521,5 @@ function love.touchreleased(id, tx, ty, dx, dy, pressure)
         TouchOverlay.touchreleased(id, vx, vy, dx, dy, pressure)
     end
 end
+
 
