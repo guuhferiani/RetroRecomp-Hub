@@ -1,6 +1,6 @@
 local Config = {
     selectedPlatform = "all",
-    selectedGameId = "crystal",
+    selectedGameId = "red",
     activeShader = "crt",
     volume = 1.0,
     scanlines = false,

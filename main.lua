@@ -22,21 +22,33 @@ local currentModal = nil -- nil, "mods", "saves", "shaders", "import"
 local actionHitboxes = {}
 local modalHitboxes = {}
 
--- Virtual resolution & responsive scaling
+-- Virtual resolution & responsive scaling (Portrait-first for mobile)
 local uiScale = 1.0
-local virtualW = 1280
-local virtualH = 720
+local virtualW = 420
+local virtualH = 840
 local safeLeft = 0
 local safeRight = 0
+local launcherX = 0
+local launcherW = 420
+local lastHeaderH = 96
+local currentHeaderHitboxes = {}
 
 local function updateViewport()
     local realW, realH = love.graphics.getDimensions()
     realW = math.max(320, realW)
     realH = math.max(240, realH)
 
-    uiScale = math.max(0.5, realH / 720)
-    virtualW = math.floor(realW / uiScale)
-    virtualH = 720
+    if realH >= realW then
+        -- Portrait mode (Mobile / vertical screen): fixed virtual width 420px, variable height
+        virtualW = 420
+        uiScale = realW / virtualW
+        virtualH = math.floor(realH / uiScale)
+    else
+        -- Landscape mode (Desktop / widescreen): fixed virtual height 740px, variable width
+        virtualH = 740
+        uiScale = realH / virtualH
+        virtualW = math.floor(realW / uiScale)
+    end
 
     if love.window and love.window.getSafeArea then
         local sx, sy, sw, sh = love.window.getSafeArea()
@@ -162,46 +174,59 @@ function love.draw()
 
     local w, h = virtualW, virtualH
 
-    -- 1. Background Fill & Subtle Pattern
-    love.graphics.setColor(Theme.colors.bg)
+    -- 1. Dark Charcoal Background
+    love.graphics.setColor(Theme.colors.recompDarkBg)
     love.graphics.rectangle("fill", 0, 0, w, h)
 
     -- Subtle grid lines
-    love.graphics.setColor(1, 1, 1, 0.02)
+    love.graphics.setColor(1, 1, 1, 0.015)
     for x = 0, w, 40 do love.graphics.line(x, 0, x, h) end
     for y = 0, h, 40 do love.graphics.line(0, y, w, y) end
 
-    -- Content layout with safe areas
-    local contentX = safeLeft
-    local contentW = w - safeLeft - safeRight
-
-    -- 2. Header Bar
-    local headerH = Header.draw(w, Config.selectedPlatform, Theme, safeLeft, safeRight)
-
-    -- 3. Filtered Games & Active Game
-    local availableGames = PlatformManager.getGamesByPlatform(Config.selectedPlatform)
+    -- Active Selected Game
     local selectedGame = PlatformManager.getGameById(Config.selectedGameId)
-
-    local gameFound = false
-    for _, g in ipairs(availableGames) do
-        if selectedGame and g.id == selectedGame.id then gameFound = true break end
-    end
-    if not gameFound and #availableGames > 0 then
-        selectedGame = availableGames[1]
+    if not selectedGame then
+        selectedGame = PlatformManager.games[1]
         Config.selectedGameId = selectedGame.id
     end
 
-    -- 4. Left Sidebar: Game List
-    local sidebarW = math.max(260, math.min(340, math.floor(contentW * 0.28)))
-    if selectedGame then
-        GameSelector.draw(availableGames, selectedGame.id, contentX, headerH, sidebarW, h - headerH, Theme, ModManager)
+    -- 2. Layout Positioning
+    local isPortrait = (h >= w)
+    launcherW = math.min(w - safeLeft - safeRight, 420)
+    
+    if isPortrait then
+        launcherX = safeLeft + math.floor((w - safeLeft - safeRight - launcherW) / 2)
+    else
+        -- On wide screens, position launcher on left or center
+        if w >= 820 then
+            launcherX = safeLeft + 40
+            -- Draw 3D Cartridge showcase on right side for desktop players!
+            local artCenterX = launcherX + launcherW + math.floor((w - (launcherX + launcherW) - safeRight) / 2)
+            local artCenterY = math.floor(h / 2)
+            CartridgeRenderer.update(love.timer.getDelta(), love.mouse.getX(), love.mouse.getY(), artCenterX, artCenterY)
+            CartridgeRenderer.draw(selectedGame, artCenterX, artCenterY, 1.15)
+        else
+            launcherX = math.floor((w - launcherW) / 2)
+        end
     end
 
-    -- 5. Main Area: Game Details & 3D/Interactive Cartridge
-    local detailsX = contentX + sidebarW
-    local detailsW = contentW - sidebarW
-    if selectedGame then
-        actionHitboxes = GameDetailsView.draw(selectedGame, detailsX, headerH, detailsW, h - headerH, Theme, ModManager, SaveManager, CartridgeRenderer)
+    -- 3. Header & Toolbar
+    love.graphics.push()
+    love.graphics.translate(launcherX, 0)
+    local headerH, hHitboxes = Header.draw(launcherW, Config.selectedPlatform, selectedGame, Theme, 0, 0)
+    lastHeaderH = headerH
+    currentHeaderHitboxes = hHitboxes
+    love.graphics.pop()
+
+    -- 4. Main Game Details View (Title, ROM Card, 4 Save Slots, Footer)
+    love.graphics.push()
+    love.graphics.translate(launcherX, headerH)
+    actionHitboxes = GameDetailsView.draw(selectedGame, 0, 0, launcherW, h - headerH, Theme, ModManager, SaveManager, CartridgeRenderer)
+    love.graphics.pop()
+
+    -- 5. Floating Game Selector Dropdown (when [ R ▼ ] is clicked)
+    if Header.isDropdownOpen then
+        Header.drawDropdown(launcherX + 14, 52 + 38, launcherW, selectedGame.id, Theme)
     end
 
     -- 6. Modals (Mods / Saves / Shaders / Import)
@@ -256,7 +281,6 @@ function love.mousepressed(screenX, screenY, button)
                 return
             end
         end
-        -- Click outside modal to close
         local mb = modalHitboxes.modalBounds
         if mb and (x < mb.x or x > mb.x + mb.w or y < mb.y or y > mb.y + mb.h) then
             currentModal = nil
@@ -309,97 +333,145 @@ function love.mousepressed(screenX, screenY, button)
         return
     end
 
-    -- B. Header Platform Tabs, Touch Toggle & Import Button
-    local clickedPlatform, toggledTouch, clickedImport = Header.mousepressed(x, y, Config.selectedPlatform, w, safeLeft, safeRight)
-    if clickedImport then
+    -- B. If Game Selector Dropdown is open
+    if Header.isDropdownOpen then
+        for _, item in ipairs(Header.dropdownHitboxes or {}) do
+            if x >= item.x and x <= item.x + item.w and y >= item.y and y <= item.y + item.h then
+                MobileBridge.hapticFeedback(0.020)
+                Config.selectedGameId = item.gameId
+                Config.save()
+                Header.isDropdownOpen = false
+                return
+            end
+        end
+        Header.isDropdownOpen = false
+        return
+    end
+
+    -- C. Header & Toolbar Click Events
+    local relHeaderX = x - launcherX
+    local headerAction = Header.mousepressed(relHeaderX, y, currentHeaderHitboxes)
+    if headerAction == "toggleDropdown" then
+        MobileBridge.hapticFeedback(0.015)
+        return
+    elseif headerAction == "import" then
         MobileBridge.hapticFeedback(0.020)
         ImportRomModal.initPath()
         currentModal = "import"
         return
-    end
-    if toggledTouch then return end
-    if clickedPlatform then
-        MobileBridge.hapticFeedback(0.018)
-        Config.selectedPlatform = clickedPlatform
+    elseif headerAction == "mods" then
+        MobileBridge.hapticFeedback(0.020)
+        currentModal = (currentModal == "mods") and nil or "mods"
+        return
+    elseif headerAction == "shaders" then
+        MobileBridge.hapticFeedback(0.020)
+        currentModal = (currentModal == "shaders") and nil or "shaders"
+        return
+    elseif headerAction == "platformSwap" then
+        -- Cycle platforms: all -> gbc -> gba -> snes -> ps1 -> all
+        local plats = { "all", "gbc", "gba", "snes", "ps1" }
+        local curIdx = 1
+        for i, p in ipairs(plats) do
+            if p == Config.selectedPlatform then curIdx = i break end
+        end
+        local nextIdx = (curIdx % #plats) + 1
+        Config.selectedPlatform = plats[nextIdx]
+        local filtered = PlatformManager.getGamesByPlatform(Config.selectedPlatform)
+        if #filtered > 0 then
+            Config.selectedGameId = filtered[1].id
+        end
         Config.save()
+        MobileBridge.hapticFeedback(0.025)
+        return
+    elseif headerAction == "quit" then
         return
     end
 
-    -- C. Sidebar Game Selection
-    local contentX = safeLeft
-    local contentW = w - safeLeft - safeRight
-    local sidebarW = math.max(260, math.min(340, math.floor(contentW * 0.28)))
-    local availableGames = PlatformManager.getGamesByPlatform(Config.selectedPlatform)
-    local clickedGameId = GameSelector.mousepressed(availableGames, x, y, contentX, 64, sidebarW, h - 64)
-    if clickedGameId then
-        MobileBridge.hapticFeedback(0.018)
-        Config.selectedGameId = clickedGameId
-        Config.save()
-        return
-    end
-
-    -- D. Action Buttons
+    -- D. Main View Actions (Play, Import, Slots, Delete, Footer)
     if actionHitboxes then
+        local relY = y - lastHeaderH
+        local relX = x - launcherX
+
         -- Play
         if actionHitboxes.play then
             local p = actionHitboxes.play
-            if x >= p.x and x <= p.x + p.w and y >= p.y and y <= p.y + p.h then
+            if relX >= p.x and relX <= p.x + p.w and relY >= p.y and relY <= p.y + p.h then
                 MobileBridge.hapticFeedback(0.035)
                 local g = PlatformManager.getGameById(Config.selectedGameId)
                 Router.launchGame(g, g.currentSlot or 1)
                 return
             end
         end
+
         -- Import Button
         if actionHitboxes.import then
             local imp = actionHitboxes.import
-            if x >= imp.x and x <= imp.x + imp.w and y >= imp.y and y <= imp.y + imp.h then
+            if relX >= imp.x and relX <= imp.x + imp.w and relY >= imp.y and relY <= imp.y + imp.h then
                 MobileBridge.hapticFeedback(0.020)
                 ImportRomModal.initPath()
                 currentModal = "import"
                 return
             end
         end
-        -- Mods Button
-        if actionHitboxes.mods then
-            local m = actionHitboxes.mods
-            if x >= m.x and x <= m.x + m.w and y >= m.y and y <= m.y + m.h then
+
+        -- Alterar ROM link
+        if actionHitboxes.changeRom then
+            local cr = actionHitboxes.changeRom
+            if relX >= cr.x and relX <= cr.x + cr.w and relY >= cr.y and relY <= cr.y + cr.h then
                 MobileBridge.hapticFeedback(0.020)
-                currentModal = "mods"
+                ImportRomModal.initPath()
+                currentModal = "import"
                 return
             end
         end
-        -- Saves Button
-        if actionHitboxes.saves then
-            local s = actionHitboxes.saves
-            if x >= s.x and x <= s.x + s.w and y >= s.y and y <= s.y + s.h then
+
+        -- Import Save Button
+        if actionHitboxes.importSave then
+            local isb = actionHitboxes.importSave
+            if relX >= isb.x and relX <= isb.x + isb.w and relY >= isb.y and relY <= isb.y + isb.h then
                 MobileBridge.hapticFeedback(0.020)
                 currentModal = "saves"
                 return
             end
         end
-        -- Shaders Button
-        if actionHitboxes.shaders then
-            local sh = actionHitboxes.shaders
-            if x >= sh.x and x <= sh.x + sh.w and y >= sh.y and y <= sh.y + sh.h then
-                MobileBridge.hapticFeedback(0.020)
-                currentModal = "shaders"
+
+        -- Delete Slot Buttons
+        for s = 1, 4 do
+            local del = actionHitboxes.deleteSlot and actionHitboxes.deleteSlot[s]
+            if del and relX >= del.x and relX <= del.x + del.w and relY >= del.y and relY <= del.y + del.h then
+                MobileBridge.hapticFeedback(0.035)
+                local g = PlatformManager.getGameById(Config.selectedGameId)
+                SaveManager.selectSlot(g.id, s)
                 return
             end
         end
-        -- Quick Slot Buttons
-        if actionHitboxes.slotArea then
-            local sa = actionHitboxes.slotArea
-            for slot = 1, 4 do
-                local sx = sa.startX + (slot - 1) * (sa.w + 6)
-                if x >= sx and x <= sx + sa.w and y >= sa.y and y <= sa.y + sa.h then
-                    MobileBridge.hapticFeedback(0.015)
-                    local g = PlatformManager.getGameById(Config.selectedGameId)
-                    g.currentSlot = slot
-                    SaveManager.selectSlot(Config.selectedGameId, slot)
-                    return
-                end
+
+        -- Slot Selection Cards
+        for s = 1, 4 do
+            local slotBox = actionHitboxes.slots and actionHitboxes.slots[s]
+            if slotBox and relX >= slotBox.x and relX <= slotBox.x + slotBox.w and relY >= slotBox.y and relY <= slotBox.y + slotBox.h then
+                MobileBridge.hapticFeedback(0.018)
+                local g = PlatformManager.getGameById(Config.selectedGameId)
+                g.currentSlot = s
+                SaveManager.selectSlot(g.id, s)
+                return
             end
+        end
+
+        -- Footer Buttons
+        if actionHitboxes.footer1 and relX >= actionHitboxes.footer1.x and relX <= actionHitboxes.footer1.x + actionHitboxes.footer1.w and relY >= actionHitboxes.footer1.y and relY <= actionHitboxes.footer1.y + actionHitboxes.footer1.h then
+            MobileBridge.hapticFeedback(0.015)
+            return
+        end
+        if actionHitboxes.footer2 and relX >= actionHitboxes.footer2.x and relX <= actionHitboxes.footer2.x + actionHitboxes.footer2.w and relY >= actionHitboxes.footer2.y and relY <= actionHitboxes.footer2.y + actionHitboxes.footer2.h then
+            MobileBridge.hapticFeedback(0.015)
+            print("[HUB] Verificando atualizações...")
+            return
+        end
+        if actionHitboxes.footer3 and relX >= actionHitboxes.footer3.x and relX <= actionHitboxes.footer3.x + actionHitboxes.footer3.w and relY >= actionHitboxes.footer3.y and relY <= actionHitboxes.footer3.y + actionHitboxes.footer3.h then
+            MobileBridge.hapticFeedback(0.015)
+            currentModal = "mods"
+            return
         end
     end
 end
@@ -408,13 +480,6 @@ function love.wheelmoved(dx, dy)
     updateViewport()
     if currentModal == "import" then
         ImportRomModal.wheelmoved(dx, dy)
-    else
-        local mx, my = love.mouse.getPosition()
-        local contentW = virtualW - safeLeft - safeRight
-        local sidebarW = math.max(260, math.min(340, math.floor(contentW * 0.28)))
-        if mx >= safeLeft and mx <= safeLeft + sidebarW then
-            GameSelector.wheelmoved(dx, dy)
-        end
     end
 end
 
@@ -430,21 +495,29 @@ end
 
 function love.keypressed(key)
     if key == "escape" then
-        if currentModal then
+        if Header.isDropdownOpen then
+            Header.isDropdownOpen = false
+        elseif currentModal then
             currentModal = nil
         else
             love.event.quit()
         end
     elseif key == "tab" then
-        -- Cycle platforms (All -> GBC -> GBA -> SNES -> PS1 -> All)
-        if Config.selectedPlatform == "all" then Config.selectedPlatform = "gbc"
-        elseif Config.selectedPlatform == "gbc" then Config.selectedPlatform = "gba"
-        elseif Config.selectedPlatform == "gba" then Config.selectedPlatform = "snes"
-        elseif Config.selectedPlatform == "snes" then Config.selectedPlatform = "ps1"
-        else Config.selectedPlatform = "all" end
+        -- Cycle platforms
+        local plats = { "all", "gbc", "gba", "snes", "ps1" }
+        local curIdx = 1
+        for i, p in ipairs(plats) do
+            if p == Config.selectedPlatform then curIdx = i break end
+        end
+        local nextIdx = (curIdx % #plats) + 1
+        Config.selectedPlatform = plats[nextIdx]
+        local filtered = PlatformManager.getGamesByPlatform(Config.selectedPlatform)
+        if #filtered > 0 then
+            Config.selectedGameId = filtered[1].id
+        end
         Config.save()
     elseif key == "return" or key == "space" then
-        if not currentModal then
+        if not currentModal and not Header.isDropdownOpen then
             local g = PlatformManager.getGameById(Config.selectedGameId)
             Router.launchGame(g, g.currentSlot or 1)
         end
@@ -493,18 +566,12 @@ function love.touchmoved(id, tx, ty, dx, dy, pressure)
         local vy = py / uiScale
         TouchOverlay.touchmoved(id, vx, vy, dx, dy, pressure)
     else
-        -- Touch scroll in modal or sidebar
+        -- Touch scroll in modal
         if currentModal == "import" then
             local deltaY = (dy or 0)
             if deltaY and math.abs(deltaY) > 0 then
                 local realH = love.graphics.getHeight()
                 ImportRomModal.touchmoved(deltaY * (realH / uiScale))
-            end
-        else
-            local deltaY = (dy or 0)
-            if deltaY and math.abs(deltaY) > 0 then
-                local realH = love.graphics.getHeight()
-                GameSelector.touchmoved(deltaY * (realH / uiScale))
             end
         end
     end
@@ -521,5 +588,6 @@ function love.touchreleased(id, tx, ty, dx, dy, pressure)
         TouchOverlay.touchreleased(id, vx, vy, dx, dy, pressure)
     end
 end
+
 
 
