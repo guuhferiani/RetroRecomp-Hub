@@ -252,8 +252,14 @@ function love.draw()
     love.graphics.pop()
 end
 
+local suppressMouseUntil = 0
+local touchGestures = {}
+
 function love.mousepressed(screenX, screenY, button)
     if button ~= 1 then return end
+    local now = love.timer and love.timer.getTime() or os.time()
+    if now < suppressMouseUntil then return end
+
     updateViewport()
     local x = screenX / uiScale
     local y = screenY / uiScale
@@ -552,42 +558,70 @@ function love.touchpressed(id, tx, ty, dx, dy, pressure)
         local btn = TouchOverlay.touchpressed(id, vx, vy, dx, dy, pressure)
         if btn then return end
     end
-    -- Fallback to standard mouse press for UI interaction
-    love.mousepressed(px, py, 1)
+
+    local now = love.timer and love.timer.getTime() or os.time()
+    touchGestures[id] = {
+        startX = vx,
+        startY = vy,
+        lastY = vy,
+        isDrag = false,
+        time = now
+    }
 end
 
 function love.touchmoved(id, tx, ty, dx, dy, pressure)
+    updateViewport()
+    local realW, realH = love.graphics.getDimensions()
+    local px = (tx <= 1.0 and tx >= 0.0) and (tx * realW) or tx
+    local py = (ty <= 1.0 and ty >= 0.0) and (ty * realH) or ty
+    local vx = px / uiScale
+    local vy = py / uiScale
+
     if MobileBridge.virtualControlsEnabled then
-        updateViewport()
-        local realW, realH = love.graphics.getDimensions()
-        local px = (tx <= 1.0 and tx >= 0.0) and (tx * realW) or tx
-        local py = (ty <= 1.0 and ty >= 0.0) and (ty * realH) or ty
-        local vx = px / uiScale
-        local vy = py / uiScale
         TouchOverlay.touchmoved(id, vx, vy, dx, dy, pressure)
     else
-        -- Touch scroll in modal
-        if currentModal == "import" then
-            local deltaY = (dy or 0)
-            if deltaY and math.abs(deltaY) > 0 then
-                local realH = love.graphics.getHeight()
-                ImportRomModal.touchmoved(deltaY * (realH / uiScale))
+        local gesture = touchGestures[id]
+        if gesture then
+            local ddx = vx - gesture.startX
+            local ddy = vy - gesture.startY
+            if (ddx * ddx + ddy * ddy) > (12 * 12) then
+                gesture.isDrag = true
             end
+            if gesture.isDrag then
+                local deltaY = vy - gesture.lastY
+                if currentModal == "import" then
+                    ImportRomModal.touchmoved(deltaY)
+                end
+            end
+            gesture.lastY = vy
         end
     end
 end
 
 function love.touchreleased(id, tx, ty, dx, dy, pressure)
+    updateViewport()
+    local realW, realH = love.graphics.getDimensions()
+    local px = (tx <= 1.0 and tx >= 0.0) and (tx * realW) or tx
+    local py = (ty <= 1.0 and ty >= 0.0) and (ty * realH) or ty
+    local vx = px / uiScale
+    local vy = py / uiScale
+
     if MobileBridge.virtualControlsEnabled then
-        updateViewport()
-        local realW, realH = love.graphics.getDimensions()
-        local px = (tx <= 1.0 and tx >= 0.0) and (tx * realW) or tx
-        local py = (ty <= 1.0 and ty >= 0.0) and (ty * realH) or ty
-        local vx = px / uiScale
-        local vy = py / uiScale
         TouchOverlay.touchreleased(id, vx, vy, dx, dy, pressure)
+    else
+        local gesture = touchGestures[id]
+        if gesture then
+            touchGestures[id] = nil
+            local now = love.timer and love.timer.getTime() or os.time()
+            suppressMouseUntil = now + 0.35
+            if not gesture.isDrag then
+                -- Tap detected: dispatch click on virtual coordinates
+                love.mousepressed(px, py, 1)
+            end
+        end
     end
 end
+
 
 
 

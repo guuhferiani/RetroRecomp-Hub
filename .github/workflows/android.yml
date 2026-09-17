@@ -57,7 +57,7 @@ jobs:
           cd ..
           rm -rf android-builder/.git android-builder/love/src/jni/love/.git
 
-      - name: Inject game.love and customize branding
+      - name: Inject game.love, permissions, and customize branding
         run: |
           mkdir -p android-builder/app/src/embed/assets
           cp build/dist/RetroRecompHub.love android-builder/app/src/embed/assets/game.love
@@ -66,6 +66,11 @@ jobs:
           sed -i 's/^app.application_id=.*/app.application_id=com.guuhferiani.retrorecomphub/' android-builder/gradle.properties
           sed -i 's/^app.name=.*/app.name=RetroRecomp Hub/' android-builder/gradle.properties
           sed -i 's/^app.orientation=.*/app.orientation=portrait/' android-builder/gradle.properties
+
+          # Inject full storage permissions for Android 10-14+ Scoped Storage into AndroidManifest.xml
+          MANIFEST="android-builder/app/src/main/AndroidManifest.xml"
+          sed -i '/<manifest/a \  <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />\n  <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />\n  <uses-permission android:name="android.permission.MANAGE_EXTERNAL_STORAGE" />' "$MANIFEST"
+          sed -i 's/<application /<application android:requestLegacyExternalStorage="true" /' "$MANIFEST"
 
       - name: Inject custom app icon into Android resources
         run: |
@@ -84,48 +89,49 @@ jobs:
       - name: Collect and rename APK
         run: |
           mkdir -p build/apk
-          cp android-builder/app/build/outputs/apk/embedNoRecord/debug/*.apk build/apk/RetroRecompHub-v1.2.0.apk
-          cp build/apk/RetroRecompHub-v1.2.0.apk build/apk/RetroRecompHub-debug.apk
+          cp android-builder/app/build/outputs/apk/embedNoRecord/debug/*.apk build/apk/RetroRecompHub-v1.3.0.apk
+          cp build/apk/RetroRecompHub-v1.3.0.apk build/apk/RetroRecompHub-debug.apk
 
       - name: Upload Android APK
         uses: actions/upload-artifact@v4
         with:
           name: RetroRecompHub-Android-APK
-          path: build/apk/RetroRecompHub-v1.2.0.apk
+          path: build/apk/RetroRecompHub-v1.3.0.apk
 
-      - name: Create Official GitHub Release (v1.2.0)
+      - name: Create Official GitHub Release (v1.3.0)
         if: github.ref == 'refs/heads/main' && github.event_name == 'push'
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: v1.2.0
-          name: "RetroRecomp Hub v1.2.0 🎮 (Interface Oficial Gen1Recomp++ & Modo Retrato Android)"
+          tag_name: v1.3.0
+          name: "RetroRecomp Hub v1.3.0 🚀 (Navegação Touch Fluida, Busca Rápida de ROMs & Permissões Android)"
           body: |
-            ## 🎮 RetroRecomp Hub v1.2.0 — Clone Oficial Gen1Recomp++ no Android 🚀
+            ## 🎮 RetroRecomp Hub v1.3.0 — Refinamentos de Usabilidade Touch & Busca de ROMs 🚀
 
-            Nova versão trazendo a interface clássica e oficial do Gen1Recomp++, com ergonomia perfeita em modo retrato para celulares!
+            Atualização dedicada à usabilidade móvel, corrigindo a navegação touch e garantindo acesso a todas as pastas de ROMs no Android!
 
             ### ✨ Novidades desta Versão:
-            - 📱 **Interface Clone Fiel Gen1Recomp++:**
-              - Layout vertical de coluna única projetado especificamente para smartphones Android.
-              - Cabeçalho pixelado com logo `Gen1Recomp++`, botão de configurações `[ ⚙ ]` e fechar `[ ✕ ]`.
-              - Seletor de versão rápido `[ R ▼ ]` com menu suspenso para alternar entre Red, Blue, Yellow, Crystal, FireRed, Super Mario World e Castlevania.
-            - 🎮 **Gerenciador de 4 Save Slots:**
-              - Visualização direta dos 4 slots de gravação com destaque de alto contraste (`[ LOADED ]`) no slot ativo.
-              - Botões pixelados vermelhos `[ Delete ]` e suporte a importação de saves externos.
-            - 📥 **Card Inteligente de ROMs:**
-              - Detecção e verificação automática com tag `[ ROM REQUIRED ]` / `[ ROM VERIFIED ]`.
-              - Botão de importação direta de armazenamento e iniciar jogo instantâneo.
-            - 📺 **Toolbar com Atalhos Rápidos:**
-              - Acesso direto ao Importador, Shaders CRT/LCD (BETA), Gerenciador de Mods (BETA) e troca rápida de console.
+            - 👆 **Navegação Touch Fluida & Gestos Naturais:**
+              - Diferenciação entre toque e rolagem (swipe): agora arrastar a lista rola suavemente os itens sem disparar cliques indesejados nas pastas.
+              - Deduplicação inteligente de eventos touch/mouse sintéticos (algoritmo alinhado ao Gen1Recomp oficial).
+            - 🔍 **Busca Rápida de ROMs no Aparelho:**
+              - Nova aba no importador que varre automaticamente pastas padrão (`Retrogame`, `Download`, `ROMs`) e lista diretamente todos os arquivos `.gba`, `.gbc`, `.bin`, `.zip`, `.sfc` encontrados no celular.
+              - Destaque automático `[RECOMENDADO]` para ROMs correspondentes ao jogo atual.
+            - 🛡️ **Permissões de Armazenamento Android:**
+              - Declaração explícita de `MANAGE_EXTERNAL_STORAGE` e `READ_EXTERNAL_STORAGE` com suporte a armazenamento legado para ler ROMs em qualquer pasta externa no Android 10 a 14+.
+            - 🎨 **Eliminação de Glifos Quebrados (`[]`):**
+              - Todos os ícones foram convertidos para renderização vetorial nítida (pastas em amarelo âmbar, cartuchos em ciano/roxo, setas e botões limpos).
+            - 📐 **Layout do Modal Redesenhado:**
+              - Altura de toque expandida (46px) para maior conforto com o polegar.
+              - Barra de rolagem visualmente indicada e rodapé em duas linhas para eliminar qualquer sobreposição com o botão de importação.
 
             ---
             ### 📥 Downloads:
-            - **Android (APK):** Baixe e instale `RetroRecompHub-v1.2.0.apk` diretamente no seu celular Android.
+            - **Android (APK):** Baixe e instale `RetroRecompHub-v1.3.0.apk` diretamente no seu celular Android.
             - **Universal / PC:** Execute `RetroRecompHub.love` através do LÖVE 11.5+.
           draft: false
           prerelease: false
           make_latest: true
           files: |
-            build/apk/RetroRecompHub-v1.2.0.apk
+            build/apk/RetroRecompHub-v1.3.0.apk
             build/dist/RetroRecompHub.love
 

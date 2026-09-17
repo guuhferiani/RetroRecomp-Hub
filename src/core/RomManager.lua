@@ -14,18 +14,18 @@ function RomManager.getQuickPaths()
     local saveDir = love.filesystem.getSaveDirectory()
 
     if MobileBridge.isMobile() then
-        table.insert(paths, { name = "Downloads", path = "/storage/emulated/0/Download", icon = "📥" })
-        table.insert(paths, { name = "Pasta ROMs", path = "/storage/emulated/0/ROMs", icon = "🎮" })
-        table.insert(paths, { name = "Armazenamento", path = "/storage/emulated/0", icon = "📱" })
-        table.insert(paths, { name = "SD Card", path = "/sdcard/Download", icon = "💾" })
-        table.insert(paths, { name = "Dados do Hub", path = saveDir, icon = "⚡" })
+        table.insert(paths, { name = "Retrogame", path = "/storage/emulated/0/Retrogame", iconType = "game" })
+        table.insert(paths, { name = "Downloads", path = "/storage/emulated/0/Download", iconType = "download" })
+        table.insert(paths, { name = "ROMs", path = "/storage/emulated/0/ROMs", iconType = "game" })
+        table.insert(paths, { name = "Armazenamento", path = "/storage/emulated/0", iconType = "storage" })
+        table.insert(paths, { name = "Dados Hub", path = saveDir, iconType = "hub" })
     else
-        table.insert(paths, { name = "Pasta do Hub", path = love.filesystem.getSource(), icon = "⚡" })
-        table.insert(paths, { name = "Pasta ROMs", path = "roms", icon = "🎮" })
+        table.insert(paths, { name = "Pasta Hub", path = love.filesystem.getSource(), iconType = "hub" })
+        table.insert(paths, { name = "Pasta ROMs", path = "roms", iconType = "game" })
         local userProfile = os.getenv("USERPROFILE") or os.getenv("HOME") or "."
-        table.insert(paths, { name = "Downloads", path = userProfile .. "/Downloads", icon = "📥" })
-        table.insert(paths, { name = "Documentos", path = userProfile .. "/Documents", icon = "📁" })
-        table.insert(paths, { name = "Saves Hub", path = saveDir, icon = "💾" })
+        table.insert(paths, { name = "Downloads", path = userProfile .. "/Downloads", iconType = "download" })
+        table.insert(paths, { name = "Documentos", path = userProfile .. "/Documents", iconType = "folder" })
+        table.insert(paths, { name = "Saves Hub", path = saveDir, iconType = "storage" })
     end
 
     return paths
@@ -48,27 +48,21 @@ function RomManager.getFileExtension(filename)
     return (filename:match("%.([^%.]+)$") or ""):lower()
 end
 
--- Check if a path is a directory (works with io / love.filesystem)
+-- Check if a path is a directory (safe fallback)
 local function isDirectory(path)
     if not path or path == "" then return false end
-    -- Try love.filesystem first
     local info = love.filesystem.getInfo(path)
     if info then return info.type == "directory" end
 
-    -- For absolute external paths, attempt to open as directory or read
-    local f, err, code = io.open(path .. "/.")
-    if f then
-        f:close()
-        return true
-    end
-    if code == 13 or (err and err:match("Permission")) then
-        return true
-    end
-    -- Check if it can't be opened as file but is not nil
-    local fileTest = io.open(path, "rb")
-    if fileTest then
-        fileTest:close()
-        return false
+    -- On Windows or fallback:
+    local isWin = (love.system and love.system.getOS() == "Windows")
+    if isWin then
+        local check = io.popen(string.format('if exist "%s\\*" (echo 1) else (echo 0)', path:gsub("/", "\\")))
+        if check then
+            local res = check:read("*l") or ""
+            check:close()
+            return res:match("1") ~= nil
+        end
     end
     return false
 end
@@ -84,7 +78,7 @@ function RomManager.listDirectory(currentPath)
         return items
     end
 
-    -- 1. Try love.filesystem if it's within game mount
+    -- 1. Try love.filesystem if it's within game mount or save directory
     local loveItems = love.filesystem.getDirectoryItems(currentPath)
     if loveItems and #loveItems > 0 then
         for _, name in ipairs(loveItems) do
@@ -98,32 +92,33 @@ function RomManager.listDirectory(currentPath)
                 end
             end
         end
+        table.sort(items.folders, function(a, b) return a.name:lower() < b.name:lower() end)
+        table.sort(items.files, function(a, b) return a.name:lower() < b.name:lower() end)
         return items
     end
 
-    -- 2. Windows / Posix directory listing via dir or ls
+    -- 2. Native OS directory listing
     local isWin = (love.system and love.system.getOS() == "Windows")
-    local cmd
     if isWin then
         local safePath = currentPath:gsub("/", "\\")
-        cmd = string.format('dir "%s" /B /A:-S 2>nul', safePath)
-    else
-        cmd = string.format('ls -1 "%s" 2>/dev/null', currentPath)
-    end
-
-    local handle = io.popen(cmd)
-    if handle then
-        for line in handle:lines() do
-            local cleanName = line:gsub("\r", ""):gsub("\n", "")
-            if cleanName ~= "" and cleanName ~= "." and cleanName ~= ".." then
-                local fullPath = currentPath .. "/" .. cleanName
-                if isWin then fullPath = fullPath:gsub("/", "\\") end
-                
-                -- Check if directory
-                local isDir = isDirectory(fullPath)
-                if isDir then
-                    table.insert(items.folders, { name = cleanName, path = fullPath, isDir = true })
-                elseif RomManager.isSupportedFile(cleanName) then
+        -- List directories
+        local dirHandle = io.popen(string.format('dir "%s" /B /A:D 2>nul', safePath))
+        if dirHandle then
+            for line in dirHandle:lines() do
+                local cleanName = line:gsub("\r", ""):gsub("\n", "")
+                if cleanName ~= "" and cleanName ~= "." and cleanName ~= ".." then
+                    table.insert(items.folders, { name = cleanName, path = currentPath .. "/" .. cleanName, isDir = true })
+                end
+            end
+            dirHandle:close()
+        end
+        -- List files
+        local fileHandle = io.popen(string.format('dir "%s" /B /A:-D 2>nul', safePath))
+        if fileHandle then
+            for line in fileHandle:lines() do
+                local cleanName = line:gsub("\r", ""):gsub("\n", "")
+                if cleanName ~= "" and RomManager.isSupportedFile(cleanName) then
+                    local fullPath = currentPath .. "/" .. cleanName
                     local f = io.open(fullPath, "rb")
                     local size = 0
                     if f then
@@ -133,8 +128,35 @@ function RomManager.listDirectory(currentPath)
                     table.insert(items.files, { name = cleanName, path = fullPath, isDir = false, size = size })
                 end
             end
+            fileHandle:close()
         end
-        handle:close()
+    else
+        -- Linux / Android: Use `ls -1p` which appends '/' to directory names
+        local cmd = string.format('ls -1p "%s" 2>/dev/null', currentPath)
+        local handle = io.popen(cmd)
+        if handle then
+            for line in handle:lines() do
+                local rawLine = line:gsub("\r", ""):gsub("\n", "")
+                if rawLine ~= "" and rawLine ~= "./" and rawLine ~= "../" and rawLine ~= "." and rawLine ~= ".." then
+                    local isDir = rawLine:sub(-1) == "/"
+                    local cleanName = isDir and rawLine:sub(1, -2) or rawLine
+                    local fullPath = currentPath .. "/" .. cleanName
+
+                    if isDir then
+                        table.insert(items.folders, { name = cleanName, path = fullPath, isDir = true })
+                    elseif RomManager.isSupportedFile(cleanName) then
+                        local f = io.open(fullPath, "rb")
+                        local size = 0
+                        if f then
+                            size = f:seek("end") or 0
+                            f:close()
+                        end
+                        table.insert(items.files, { name = cleanName, path = fullPath, isDir = false, size = size })
+                    end
+                end
+            end
+            handle:close()
+        end
     end
 
     -- Sort folders and files alphabetically
@@ -142,6 +164,67 @@ function RomManager.listDirectory(currentPath)
     table.sort(items.files, function(a, b) return a.name:lower() < b.name:lower() end)
 
     return items
+end
+
+-- Fast recursive scanner for ROM files on Android & PC
+local cachedQuickScan = nil
+local lastScanTime = 0
+
+function RomManager.quickScanDevice(forceRefresh)
+    local now = love.timer and love.timer.getTime() or os.time()
+    if not forceRefresh and cachedQuickScan and (now - lastScanTime < 10) then
+        return cachedQuickScan
+    end
+
+    local foundFiles = {}
+    local seenPaths = {}
+    local roots = {}
+
+    if MobileBridge.isMobile() then
+        table.insert(roots, "/storage/emulated/0/Retrogame")
+        table.insert(roots, "/storage/emulated/0/Download")
+        table.insert(roots, "/storage/emulated/0/ROMs")
+        table.insert(roots, "/storage/emulated/0/Roms")
+        table.insert(roots, "/sdcard/Download")
+        table.insert(roots, "/sdcard/Retrogame")
+        table.insert(roots, love.filesystem.getSaveDirectory())
+    else
+        table.insert(roots, "roms")
+        table.insert(roots, "test_roms")
+        local userProfile = os.getenv("USERPROFILE") or os.getenv("HOME") or "."
+        table.insert(roots, userProfile .. "/Downloads")
+        table.insert(roots, love.filesystem.getSaveDirectory())
+    end
+
+    local isWin = (love.system and love.system.getOS() == "Windows")
+
+    local function scanDirRecursive(dirPath, depth)
+        if depth > 4 then return end
+        local listed = RomManager.listDirectory(dirPath)
+        for _, file in ipairs(listed.files) do
+            if not seenPaths[file.path] then
+                seenPaths[file.path] = true
+                file.folder = dirPath:match("[^/\\]+$") or dirPath
+                table.insert(foundFiles, file)
+            end
+        end
+        for _, folder in ipairs(listed.folders) do
+            -- Avoid deep systemic folders
+            local fn = folder.name:lower()
+            if fn ~= "android" and fn ~= "dcim" and fn ~= "pictures" and fn ~= "cache" and fn ~= "audiobooks" and fn ~= "log" and fn ~= ".git" then
+                scanDirRecursive(folder.path, depth + 1)
+            end
+        end
+    end
+
+    for _, root in ipairs(roots) do
+        scanDirRecursive(root, 1)
+    end
+
+    table.sort(foundFiles, function(a, b) return a.name:lower() < b.name:lower() end)
+    cachedQuickScan = foundFiles
+    lastScanTime = now
+    return foundFiles
 end
 
 -- Get parent directory
