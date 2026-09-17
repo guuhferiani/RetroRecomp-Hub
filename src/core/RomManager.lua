@@ -238,7 +238,11 @@ function RomManager.handleDroppedFile(fileObject)
 
     -- Match by filename keywords
     for _, g in ipairs(PlatformManager.games) do
-        if g.id == "crystal" and (lowerName:match("crystal") or lowerName:match("cristal")) then
+        if g.id == "red" and (lowerName:match("red") or lowerName:match("vermelh")) then
+            matchedGame = g; break
+        elseif g.id == "blue" and (lowerName:match("blue") or lowerName:match("azul")) then
+            matchedGame = g; break
+        elseif g.id == "crystal" and (lowerName:match("crystal") or lowerName:match("cristal")) then
             matchedGame = g; break
         elseif g.id == "yellow" and (lowerName:match("yellow") or lowerName:match("amarela") or lowerName:match("pikachu")) then
             matchedGame = g; break
