@@ -43,6 +43,7 @@ Theme.colors = {
 
     accentGbc = {0.06, 0.75, 0.50, 1.0},
     accentGba = {0.58, 0.38, 0.96, 1.0},
+    accentCyan = {0.18, 0.78, 0.96, 1.0},
     accentGold = {0.96, 0.72, 0.15, 1.0},
     accentRed = {0.94, 0.26, 0.28, 1.0},
     accentBlue = {0.22, 0.58, 0.98, 1.0},

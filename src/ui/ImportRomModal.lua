@@ -161,11 +161,11 @@ function ImportRomModal.draw(game, w, h, Theme)
     local pickX = searchX + tabW + 6
     local pickW = mx_pos + modalW - 20 - pickX
     local isPickHover = (curX >= pickX and curX <= pickX + pickW and curY >= tabY and curY <= tabY + tabH)
-    love.graphics.setColor(isPickHover and Theme.colors.accentCyan or Theme.colors.panelBg)
+    love.graphics.setColor(isPickHover and (Theme.colors.accentCyan or {0.18, 0.78, 0.96, 1.0}) or Theme.colors.panelBg)
     love.graphics.rectangle("fill", pickX, tabY, pickW, tabH, 6, 6)
-    love.graphics.setColor(Theme.colors.accentCyan or Theme.colors.buttonPlay)
+    love.graphics.setColor(Theme.colors.accentCyan or Theme.colors.buttonPlay or {0.18, 0.78, 0.96, 1.0})
     love.graphics.rectangle("line", pickX, tabY, pickW, tabH, 6, 6)
-    love.graphics.setColor(isPickHover and {0.05, 0.08, 0.12, 1.0} or Theme.colors.accentCyan)
+    love.graphics.setColor(isPickHover and {0.05, 0.08, 0.12, 1.0} or (Theme.colors.accentCyan or {0.18, 0.78, 0.96, 1.0}))
     love.graphics.setFont(Theme.fonts.small)
     love.graphics.printf("+ Arquivo", pickX, tabY + 8, pickW, "center")
     hitboxes.pickFileBtn = { x = pickX, y = tabY, w = pickW, h = tabH }
