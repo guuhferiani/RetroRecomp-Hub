@@ -24,14 +24,27 @@ local function normalizePath(p)
     end
 end
 
-function Router.findEmulator()
+function Router.findEmulator(game)
     local src = love.filesystem and love.filesystem.getSource() or "."
-    local candidates = {
-        src .. "/emulator/mGBA.exe",
-        "emulator/mGBA.exe",
-        "../Pokemon-GBA/emulator/mGBA.exe",
-        "../Proj-Local Pokemon/gba/emulator/mGBA.exe"
-    }
+    local platform = game and game.platform or "gba"
+
+    local candidates = {}
+
+    if platform == "snes" then
+        table.insert(candidates, src .. "/emulator/snes9x.exe")
+        table.insert(candidates, src .. "/emulator/snes9x-x64.exe")
+        table.insert(candidates, "emulator/snes9x.exe")
+        table.insert(candidates, "emulator/snes9x-x64.exe")
+    elseif platform == "ps1" then
+        table.insert(candidates, src .. "/emulator/duckstation.exe")
+        table.insert(candidates, src .. "/emulator/duckstation-qt-x64-ReleaseLTCG.exe")
+        table.insert(candidates, "emulator/duckstation.exe")
+    else
+        table.insert(candidates, src .. "/emulator/mGBA.exe")
+        table.insert(candidates, "emulator/mGBA.exe")
+        table.insert(candidates, "../Pokemon-GBA/emulator/mGBA.exe")
+        table.insert(candidates, "../Proj-Local Pokemon/gba/emulator/mGBA.exe")
+    end
 
     for _, c in ipairs(candidates) do
         local norm = normalizePath(c)
@@ -94,7 +107,7 @@ function Router.launchGame(game, slotId)
     end
 
     local romPath = Router.findRom(game)
-    local emuPath = Router.findEmulator()
+    local emuPath = Router.findEmulator(game)
 
     print(string.format("[ROUTER] Found ROM: %s", tostring(romPath)))
     print(string.format("[ROUTER] Found Emulator: %s", tostring(emuPath)))

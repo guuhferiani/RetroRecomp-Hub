@@ -14,10 +14,11 @@ function RomManager.getQuickPaths()
     local saveDir = love.filesystem.getSaveDirectory()
 
     if MobileBridge.isMobile() then
-        table.insert(paths, { name = "Retrogame", path = "/storage/emulated/0/Retrogame", iconType = "game" })
         table.insert(paths, { name = "Downloads", path = "/storage/emulated/0/Download", iconType = "download" })
+        table.insert(paths, { name = "Retrogame", path = "/storage/emulated/0/Retrogame", iconType = "game" })
         table.insert(paths, { name = "ROMs", path = "/storage/emulated/0/ROMs", iconType = "game" })
         table.insert(paths, { name = "Armazenamento", path = "/storage/emulated/0", iconType = "storage" })
+        table.insert(paths, { name = "Hub ROMs", path = saveDir .. "/roms", iconType = "game" })
         table.insert(paths, { name = "Dados Hub", path = saveDir, iconType = "hub" })
     else
         table.insert(paths, { name = "Pasta Hub", path = love.filesystem.getSource(), iconType = "hub" })
@@ -323,9 +324,9 @@ function RomManager.getRomStatus(game)
     return false, nil, "ROM não encontrada"
 end
 
--- Link or copy a selected ROM to a game
-function RomManager.importRomForGame(gameId, sourceFilePath)
-    if not gameId or not sourceFilePath or sourceFilePath == "" then
+-- Link or copy a selected ROM to a game (supports string path or LÖVE File/FileData object)
+function RomManager.importRomForGame(gameId, sourceOrFileObject)
+    if not gameId or not sourceOrFileObject then
         return false, "Arquivo inválido"
     end
 
@@ -339,47 +340,81 @@ function RomManager.importRomForGame(gameId, sourceFilePath)
         love.filesystem.createDirectory("roms/" .. platform)
     end)
 
-    -- Attempt to read bytes from source file to make a physical local copy
     local fileData = nil
-    local srcFile = io.open(sourceFilePath, "rb")
-    if srcFile then
-        fileData = srcFile:read("*a")
-        srcFile:close()
-    end
+    local sourceFileName = nil
+    local assignedPath = nil
 
-    -- If direct io.open failed, attempt to read via love.filesystem
-    if not fileData and love.filesystem.getInfo(sourceFilePath) then
-        fileData = love.filesystem.read(sourceFilePath)
-    end
+    -- Check if sourceOrFileObject is a LÖVE File / FileData / DroppedFile object
+    if type(sourceOrFileObject) == "userdata" or type(sourceOrFileObject) == "table" then
+        if sourceOrFileObject.getFilename then
+            sourceFileName = sourceOrFileObject:getFilename()
+        elseif sourceOrFileObject.name then
+            sourceFileName = sourceOrFileObject.name
+        end
 
-    -- If still not found and path is external, try temporary mount to read
-    if not fileData then
-        local dir = sourceFilePath:match("^(.*)[/\\][^/\\]+$")
-        local fname = sourceFilePath:match("[^/\\]+$")
-        if dir and fname then
-            local mountPoint = "imp_read_" .. tostring(math.random(1000, 9999))
-            local okMount = pcall(function() return love.filesystem.mount(dir, mountPoint) end)
-            if okMount then
-                local mountedPath = mountPoint .. "/" .. fname
-                if love.filesystem.getInfo(mountedPath) then
-                    fileData = love.filesystem.read(mountedPath)
+        local okRead, content = pcall(function()
+            if sourceOrFileObject.open then
+                sourceOrFileObject:open("r")
+                local d = sourceOrFileObject:read()
+                sourceOrFileObject:close()
+                return d
+            elseif sourceOrFileObject.getString then
+                return sourceOrFileObject:getString()
+            end
+            return nil
+        end)
+        if okRead and content then
+            fileData = content
+        end
+    elseif type(sourceOrFileObject) == "string" then
+        local sourceFilePath = sourceOrFileObject
+        sourceFileName = sourceFilePath:match("[^/\\]+$") or (gameId .. "." .. platform)
+
+        -- 1. Attempt direct io.open
+        local srcFile = io.open(sourceFilePath, "rb")
+        if srcFile then
+            fileData = srcFile:read("*a")
+            srcFile:close()
+        end
+
+        -- 2. If direct io.open failed, attempt to read via love.filesystem
+        if not fileData and love.filesystem.getInfo(sourceFilePath) then
+            fileData = love.filesystem.read(sourceFilePath)
+        end
+
+        -- 3. If still not found and path is external, try temporary mount to read
+        if not fileData then
+            local dir = sourceFilePath:match("^(.*)[/\\][^/\\]+$")
+            local fname = sourceFilePath:match("[^/\\]+$")
+            if dir and fname then
+                local mountPoint = "imp_read_" .. tostring(math.random(1000, 9999))
+                local okMount = pcall(function() return love.filesystem.mount(dir, mountPoint) end)
+                if okMount then
+                    local mountedPath = mountPoint .. "/" .. fname
+                    if love.filesystem.getInfo(mountedPath) then
+                        fileData = love.filesystem.read(mountedPath)
+                    end
+                    pcall(function() love.filesystem.unmount(dir) end)
                 end
-                pcall(function() love.filesystem.unmount(dir) end)
             end
         end
+
+        assignedPath = sourceFilePath
     end
 
-    local assignedPath = sourceFilePath
-
-    -- If file content was successfully retrieved, save a physical copy to the Hub
+    -- If file content was successfully retrieved, save a physical copy to the Hub's safe sandbox
     if fileData and #fileData > 0 then
-        local cleanName = sourceFilePath:match("[^/\\]+$") or (gameId .. "." .. platform)
+        local cleanName = (sourceFileName and sourceFileName:match("[^/\\]+$")) or (gameId .. "." .. platform)
         local destRelPath = "roms/" .. platform .. "/" .. cleanName
         local written = love.filesystem.write(destRelPath, fileData)
         if written then
             assignedPath = destRelPath
-            print(string.format("[ROM_MANAGER] Saved physical copy of ROM to %s (%d bytes)", destRelPath, #fileData))
+            print(string.format("[ROM_MANAGER] Successfully wrote ROM to %s (%d bytes)", destRelPath, #fileData))
         end
+    end
+
+    if not assignedPath or assignedPath == "" then
+        assignedPath = (sourceFileName and ("roms/" .. platform .. "/" .. sourceFileName)) or sourceOrFileObject
     end
 
     -- Store path in Config
@@ -389,8 +424,18 @@ function RomManager.importRomForGame(gameId, sourceFilePath)
     Config.customRomPaths[gameId] = assignedPath
     Config.save()
 
-    print(string.format("[ROM_MANAGER] Assigned ROM for %s -> %s", gameId, assignedPath))
+    print(string.format("[ROM_MANAGER] Assigned ROM for %s -> %s", gameId, tostring(assignedPath)))
     return true, "ROM importada com sucesso!"
+end
+
+-- Pick file via system file dialog and import directly
+function RomManager.pickAndImport(gameId, callback)
+    MobileBridge.pickRomFile(function(pickedFile)
+        if pickedFile then
+            local ok, msg = RomManager.importRomForGame(gameId, pickedFile)
+            if callback then callback(ok, msg) end
+        end
+    end)
 end
 
 -- Auto-assign dropped file to matching game based on platform / filename
@@ -441,24 +486,12 @@ function RomManager.handleDroppedFile(fileObject)
     end
 
     if matchedGame then
-        local okOpen, _ = pcall(function() return fileObject:open("r") end)
-        if okOpen then
-            local data = fileObject:read()
-            pcall(function() fileObject:close() end)
-            if data and #data > 0 then
-                pcall(function()
-                    love.filesystem.createDirectory("roms")
-                    love.filesystem.createDirectory("roms/" .. matchedGame.platform)
-                end)
-                local cleanName = filename:match("[^/\\]+$") or (matchedGame.id .. "." .. ext)
-                local destRel = "roms/" .. matchedGame.platform .. "/" .. cleanName
-                love.filesystem.write(destRel, data)
-                RomManager.importRomForGame(matchedGame.id, destRel)
-                return true, string.format("ROM %s importada para %s!", cleanName, matchedGame.title)
-            end
+        local ok, msg = RomManager.importRomForGame(matchedGame.id, fileObject)
+        if ok then
+            return true, string.format("ROM %s importada para %s!", filename, matchedGame.title)
+        else
+            return false, msg
         end
-        RomManager.importRomForGame(matchedGame.id, filename)
-        return true, string.format("ROM associada a %s com sucesso!", matchedGame.title)
     end
 
     return false, "Nenhum jogo compatível identificado para este arquivo"

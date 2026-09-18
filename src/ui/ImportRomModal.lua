@@ -129,32 +129,46 @@ function ImportRomModal.draw(game, w, h, Theme)
     love.graphics.print("X", closeX + 8, closeY + 2)
     hitboxes.closeBtn = { x = closeX, y = closeY, w = closeS, h = closeS }
 
-    -- 2. Mode Selector: [ Pastas ] vs [ 🔍 Buscar no Celular ]
+    -- 2. Mode Selector: [ Pastas ] vs [ 🔍 Busca Rapida ] vs [ 📂 Escolher Arquivo ]
     local tabY = my_pos + 52
-    local tabW = math.floor((modalW - 40) / 2)
+    local totalTabW = modalW - 40
+    local tabW = math.floor((totalTabW - 12) / 3)
     local tabH = 32
 
     -- Browse Tab
     local isBrowseActive = (ImportRomModal.mode == "browse")
     local isBrowseHover = (curX >= mx_pos + 20 and curX <= mx_pos + 20 + tabW and curY >= tabY and curY <= tabY + tabH)
     Theme.drawCard(mx_pos + 20, tabY, tabW, tabH, 6, isBrowseHover, isBrowseActive, accent)
-    drawVectorFolder(mx_pos + 30, tabY + 9, 0.9)
+    drawVectorFolder(mx_pos + 28, tabY + 9, 0.8)
     love.graphics.setColor(isBrowseActive and Theme.colors.textPrimary or Theme.colors.textSecondary)
     love.graphics.setFont(Theme.fonts.small)
-    love.graphics.print("Navegar Pastas", mx_pos + 52, tabY + 8)
+    love.graphics.print("Pastas", mx_pos + 46, tabY + 8)
     hitboxes.modeBrowseBtn = { x = mx_pos + 20, y = tabY, w = tabW, h = tabH }
 
     -- Search Tab (Quick Scan)
     local searchX = mx_pos + 20 + tabW + 6
     local isSearchActive = (ImportRomModal.mode == "search")
-    local isSearchHover = (curX >= searchX and curX <= searchX + tabW - 6 and curY >= tabY and curY <= tabY + tabH)
-    Theme.drawCard(searchX, tabY, tabW - 6, tabH, 6, isSearchHover, isSearchActive, Theme.colors.accentCyan or accent)
+    local isSearchHover = (curX >= searchX and curX <= searchX + tabW and curY >= tabY and curY <= tabY + tabH)
+    Theme.drawCard(searchX, tabY, tabW, tabH, 6, isSearchHover, isSearchActive, Theme.colors.accentCyan or accent)
     love.graphics.setColor(Theme.colors.accentCyan or {0.2, 0.8, 1, 1})
-    drawVectorCartridge(searchX + 10, tabY + 8, 0.8, false)
+    drawVectorCartridge(searchX + 8, tabY + 8, 0.75, false)
     love.graphics.setColor(isSearchActive and Theme.colors.textPrimary or Theme.colors.textSecondary)
     love.graphics.setFont(Theme.fonts.small)
-    love.graphics.print("Busca Rapida de ROMs", searchX + 30, tabY + 8)
-    hitboxes.modeSearchBtn = { x = searchX, y = tabY, w = tabW - 6, h = tabH }
+    love.graphics.print("Busca Rapida", searchX + 26, tabY + 8)
+    hitboxes.modeSearchBtn = { x = searchX, y = tabY, w = tabW, h = tabH }
+
+    -- Native Pick File Button
+    local pickX = searchX + tabW + 6
+    local pickW = mx_pos + modalW - 20 - pickX
+    local isPickHover = (curX >= pickX and curX <= pickX + pickW and curY >= tabY and curY <= tabY + tabH)
+    love.graphics.setColor(isPickHover and Theme.colors.accentCyan or Theme.colors.panelBg)
+    love.graphics.rectangle("fill", pickX, tabY, pickW, tabH, 6, 6)
+    love.graphics.setColor(Theme.colors.accentCyan or Theme.colors.buttonPlay)
+    love.graphics.rectangle("line", pickX, tabY, pickW, tabH, 6, 6)
+    love.graphics.setColor(isPickHover and {0.05, 0.08, 0.12, 1.0} or Theme.colors.accentCyan)
+    love.graphics.setFont(Theme.fonts.small)
+    love.graphics.printf("+ Arquivo", pickX, tabY + 8, pickW, "center")
+    hitboxes.pickFileBtn = { x = pickX, y = tabY, w = pickW, h = tabH }
 
     local contentTopY = tabY + tabH + 8
 
@@ -461,6 +475,18 @@ function ImportRomModal.mousepressed(x, y, button, hitboxes, game)
         if x >= sb.x and x <= sb.x + sb.w and y >= sb.y and y <= sb.y + sb.h then
             ImportRomModal.triggerQuickScan()
             return "tab"
+        end
+    end
+    if hitboxes.pickFileBtn then
+        local pb = hitboxes.pickFileBtn
+        if x >= pb.x and x <= pb.x + pb.w and y >= pb.y and y <= pb.y + pb.h then
+            if game then
+                RomManager.pickAndImport(game.id, function(ok, msg)
+                    ImportRomModal.statusMessage = msg or (ok and "ROM Importada!" or "Falha ao importar")
+                    ImportRomModal.statusTimer = 2.5
+                end)
+            end
+            return "pick"
         end
     end
 

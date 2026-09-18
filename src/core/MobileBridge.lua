@@ -49,23 +49,31 @@ end
 
 function MobileBridge.pickRomFile(callback)
     if love.system and love.system.pickFile then
-        -- Storage Access Framework on Android / iOS
-        love.system.pickFile("application/octet-stream", function(filePath)
-            if callback then callback(filePath) end
+        -- Attempt to pick file with generic binary or all-files filter
+        pcall(function()
+            love.system.pickFile(function(fileOrPath)
+                if callback and fileOrPath then
+                    callback(fileOrPath)
+                end
+            end)
         end)
-    else
-        print("[MOBILE] File picker not available on this platform.")
+    elseif love.window and love.window.showMessageBox then
+        print("[MOBILE] File picker not available directly, use standard file explorer.")
     end
 end
 
 function MobileBridge.launchRomMobile(game, romPath)
     print(string.format("[MOBILE] Launching %s on mobile: %s", game.title, tostring(romPath)))
-    if love.system and love.system.openURL and romPath then
-        -- Triggers Android Intent file association (RetroArch, PizzaBoy, mGBA, etc.)
-        love.system.openURL("file://" .. romPath)
-        return true
+    if not romPath or romPath == "" then return false end
+
+    -- Try standard URI
+    if love.system and love.system.openURL then
+        local targetUrl = romPath:match("^%a+://") and romPath or ("file://" .. romPath)
+        local ok, _ = pcall(function() return love.system.openURL(targetUrl) end)
+        if ok then return true end
     end
     return false
 end
 
 return MobileBridge
+

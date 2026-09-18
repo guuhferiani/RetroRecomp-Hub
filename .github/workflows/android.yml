@@ -93,48 +93,44 @@ jobs:
       - name: Collect and rename APK
         run: |
           mkdir -p build/apk
-          cp android-builder/app/build/outputs/apk/embedNoRecord/debug/*.apk build/apk/RetroRecompHub-v1.3.1.apk
-          cp build/apk/RetroRecompHub-v1.3.1.apk build/apk/RetroRecompHub-debug.apk
+          cp android-builder/app/build/outputs/apk/embedNoRecord/debug/*.apk build/apk/RetroRecompHub-v1.3.2.apk
+          cp build/apk/RetroRecompHub-v1.3.2.apk build/apk/RetroRecompHub-debug.apk
 
       - name: Upload Android APK
         uses: actions/upload-artifact@v4
         with:
           name: RetroRecompHub-Android-APK
-          path: build/apk/RetroRecompHub-v1.3.1.apk
+          path: build/apk/RetroRecompHub-v1.3.2.apk
 
-      - name: Create Official GitHub Release (v1.3.1)
+      - name: Create Official GitHub Release (v1.3.2)
         if: github.ref == 'refs/heads/main' && github.event_name == 'push'
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: v1.3.1
-          name: "RetroRecomp Hub v1.3.1 🚀 (Correção de Toque, Importação de ROMs & Permissões Android)"
+          tag_name: v1.3.2
+          name: "RetroRecomp Hub v1.3.2 🚀 (Seletor Nativo de ROMs SAF, Suporte SNES/PS1 & Sandbox Segura)"
           body: |
-            ## 🎮 RetroRecomp Hub v1.3.1 — Correção de Toque, Importador de ROMs & Build CI 🚀
+            ## 🎮 RetroRecomp Hub v1.3.2 — Seletor Nativo SAF, Suporte SNES/PS1 & Sandbox Segura 🚀
 
-            Atualização que corrige o build do APK Android no GitHub Actions, restaura o reconhecimento de toques na tela e aprimora a importação física de ROMs no celular!
+            Atualização que resolve a compatibilidade de leitura e importação de ROMs no Android com Storage Access Framework (SAF), cópia segura em sandbox e suporte a emuladores de múltiplas plataformas!
 
-            ### ✨ Novidades desta Versão:
-            - 👆 **Correção Crítica de Toque no Android:**
-              - Corrigido problema onde eventos de toque eram bloqueados antes de atingir os botões e pastas.
-              - Agora o toque para navegar em pastas, selecionar ROMs e iniciar jogos responde de forma instantânea.
-            - 📥 **Importação com Cópia Física para Armazenamento do Hub:**
-              - Ao importar uma ROM (seja por busca, navegação ou compartilhamento de arquivo), os dados binários agora são copiados diretamente para a pasta interna do aplicativo (`roms/<platform>/`).
-              - A ROM permanece segura e utilizável mesmo se os arquivos de download externos forem movidos ou alterados.
-            - 📂 **Explorador Nativo Robusto via PhysFS:**
-              - Listagem de pastas no Android através de montagem direta sem depender de comandos shell do sistema (`io.popen`), evitando restrições de sandbox.
-            - 🛡️ **Permissões de Armazenamento Android Corrigidas:**
-              - Manifesto ajustado para evitar conflitos de versão do SDK (`WRITE_EXTERNAL_STORAGE`, `READ_EXTERNAL_STORAGE` e `MANAGE_EXTERNAL_STORAGE` limpos com suporte a armazenamento legado).
-            - 💾 **Pasta Pública do Hub (`externalstorage = true`):**
-              - Dados e ROMs disponíveis no caminho acessível do aparelho: `Android/data/com.guuhferiani.retrorecomphub/files/save/RetroRecompHub`.
+            ### ✨ Novidades da Versão v1.3.2:
+            - 📂 **Botão '+ Arquivo' com Seletor Nativo (SAF):**
+              - Permite selecionar qualquer arquivo de ROM diretamente do gerenciador de arquivos oficial do Android / PC.
+            - 🛡️ **Importação Segura em Sandbox Interna:**
+              - Suporte total a fluxos de dados binários `File`/`FileData` copiando fisicamente para `save/roms/<platform>/`.
+            - 🕹️ **Roteamento Inteligente Multiconsole:**
+              - Detecção dinâmica de emuladores dedicados para Game Boy (mGBA), Super Nintendo (snes9x) e PlayStation 1 (duckstation).
+            - 📱 **Atalhos de Armazenamento Expandidos:**
+              - Acesso facilitado às pastas `/Download`, `/Retrogame`, `/ROMs` e armazenamento interno do app.
 
             ---
             ### 📥 Downloads:
-            - **Android (APK):** Baixe e instale `RetroRecompHub-v1.3.1.apk` diretamente no seu celular Android.
+            - **Android (APK):** Baixe e instale `RetroRecompHub-v1.3.2.apk` no seu celular.
             - **Universal / PC:** Execute `RetroRecompHub.love` através do LÖVE 11.5+.
           draft: false
           prerelease: false
           make_latest: true
           files: |
-            build/apk/RetroRecompHub-v1.3.1.apk
+            build/apk/RetroRecompHub-v1.3.2.apk
             build/dist/RetroRecompHub.love
 
