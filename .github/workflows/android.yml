@@ -67,10 +67,14 @@ jobs:
           sed -i 's/^app.name=.*/app.name=RetroRecomp Hub/' android-builder/gradle.properties
           sed -i 's/^app.orientation=.*/app.orientation=portrait/' android-builder/gradle.properties
 
-          # Inject full storage permissions for Android 10-14+ Scoped Storage into AndroidManifest.xml
+          # Configure storage permissions and legacy storage in AndroidManifest.xml
           MANIFEST="android-builder/app/src/main/AndroidManifest.xml"
-          sed -i '/<manifest/a \  <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />\n  <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />\n  <uses-permission android:name="android.permission.MANAGE_EXTERNAL_STORAGE" />' "$MANIFEST"
-          sed -i 's/<application /<application android:requestLegacyExternalStorage="true" /' "$MANIFEST"
+
+          # Replace the restricted WRITE_EXTERNAL_STORAGE (maxSdkVersion=18) with full storage permissions
+          sed -i 's|.*android\.permission\.WRITE_EXTERNAL_STORAGE.*|  <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />\n  <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />\n  <uses-permission android:name="android.permission.MANAGE_EXTERNAL_STORAGE" />|' "$MANIFEST"
+
+          # Add requestLegacyExternalStorage to <application
+          sed -i 's|<application|<application android:requestLegacyExternalStorage="true"|' "$MANIFEST"
 
       - name: Inject custom app icon into Android resources
         run: |
@@ -89,49 +93,48 @@ jobs:
       - name: Collect and rename APK
         run: |
           mkdir -p build/apk
-          cp android-builder/app/build/outputs/apk/embedNoRecord/debug/*.apk build/apk/RetroRecompHub-v1.3.0.apk
-          cp build/apk/RetroRecompHub-v1.3.0.apk build/apk/RetroRecompHub-debug.apk
+          cp android-builder/app/build/outputs/apk/embedNoRecord/debug/*.apk build/apk/RetroRecompHub-v1.3.1.apk
+          cp build/apk/RetroRecompHub-v1.3.1.apk build/apk/RetroRecompHub-debug.apk
 
       - name: Upload Android APK
         uses: actions/upload-artifact@v4
         with:
           name: RetroRecompHub-Android-APK
-          path: build/apk/RetroRecompHub-v1.3.0.apk
+          path: build/apk/RetroRecompHub-v1.3.1.apk
 
-      - name: Create Official GitHub Release (v1.3.0)
+      - name: Create Official GitHub Release (v1.3.1)
         if: github.ref == 'refs/heads/main' && github.event_name == 'push'
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: v1.3.0
-          name: "RetroRecomp Hub v1.3.0 🚀 (Navegação Touch Fluida, Busca Rápida de ROMs & Permissões Android)"
+          tag_name: v1.3.1
+          name: "RetroRecomp Hub v1.3.1 🚀 (Correção de Toque, Importação de ROMs & Permissões Android)"
           body: |
-            ## 🎮 RetroRecomp Hub v1.3.0 — Refinamentos de Usabilidade Touch & Busca de ROMs 🚀
+            ## 🎮 RetroRecomp Hub v1.3.1 — Correção de Toque, Importador de ROMs & Build CI 🚀
 
-            Atualização dedicada à usabilidade móvel, corrigindo a navegação touch e garantindo acesso a todas as pastas de ROMs no Android!
+            Atualização que corrige o build do APK Android no GitHub Actions, restaura o reconhecimento de toques na tela e aprimora a importação física de ROMs no celular!
 
             ### ✨ Novidades desta Versão:
-            - 👆 **Navegação Touch Fluida & Gestos Naturais:**
-              - Diferenciação entre toque e rolagem (swipe): agora arrastar a lista rola suavemente os itens sem disparar cliques indesejados nas pastas.
-              - Deduplicação inteligente de eventos touch/mouse sintéticos (algoritmo alinhado ao Gen1Recomp oficial).
-            - 🔍 **Busca Rápida de ROMs no Aparelho:**
-              - Nova aba no importador que varre automaticamente pastas padrão (`Retrogame`, `Download`, `ROMs`) e lista diretamente todos os arquivos `.gba`, `.gbc`, `.bin`, `.zip`, `.sfc` encontrados no celular.
-              - Destaque automático `[RECOMENDADO]` para ROMs correspondentes ao jogo atual.
-            - 🛡️ **Permissões de Armazenamento Android:**
-              - Declaração explícita de `MANAGE_EXTERNAL_STORAGE` e `READ_EXTERNAL_STORAGE` com suporte a armazenamento legado para ler ROMs em qualquer pasta externa no Android 10 a 14+.
-            - 🎨 **Eliminação de Glifos Quebrados (`[]`):**
-              - Todos os ícones foram convertidos para renderização vetorial nítida (pastas em amarelo âmbar, cartuchos em ciano/roxo, setas e botões limpos).
-            - 📐 **Layout do Modal Redesenhado:**
-              - Altura de toque expandida (46px) para maior conforto com o polegar.
-              - Barra de rolagem visualmente indicada e rodapé em duas linhas para eliminar qualquer sobreposição com o botão de importação.
+            - 👆 **Correção Crítica de Toque no Android:**
+              - Corrigido problema onde eventos de toque eram bloqueados antes de atingir os botões e pastas.
+              - Agora o toque para navegar em pastas, selecionar ROMs e iniciar jogos responde de forma instantânea.
+            - 📥 **Importação com Cópia Física para Armazenamento do Hub:**
+              - Ao importar uma ROM (seja por busca, navegação ou compartilhamento de arquivo), os dados binários agora são copiados diretamente para a pasta interna do aplicativo (`roms/<platform>/`).
+              - A ROM permanece segura e utilizável mesmo se os arquivos de download externos forem movidos ou alterados.
+            - 📂 **Explorador Nativo Robusto via PhysFS:**
+              - Listagem de pastas no Android através de montagem direta sem depender de comandos shell do sistema (`io.popen`), evitando restrições de sandbox.
+            - 🛡️ **Permissões de Armazenamento Android Corrigidas:**
+              - Manifesto ajustado para evitar conflitos de versão do SDK (`WRITE_EXTERNAL_STORAGE`, `READ_EXTERNAL_STORAGE` e `MANAGE_EXTERNAL_STORAGE` limpos com suporte a armazenamento legado).
+            - 💾 **Pasta Pública do Hub (`externalstorage = true`):**
+              - Dados e ROMs disponíveis no caminho acessível do aparelho: `Android/data/com.guuhferiani.retrorecomphub/files/save/RetroRecompHub`.
 
             ---
             ### 📥 Downloads:
-            - **Android (APK):** Baixe e instale `RetroRecompHub-v1.3.0.apk` diretamente no seu celular Android.
+            - **Android (APK):** Baixe e instale `RetroRecompHub-v1.3.1.apk` diretamente no seu celular Android.
             - **Universal / PC:** Execute `RetroRecompHub.love` através do LÖVE 11.5+.
           draft: false
           prerelease: false
           make_latest: true
           files: |
-            build/apk/RetroRecompHub-v1.3.0.apk
+            build/apk/RetroRecompHub-v1.3.1.apk
             build/dist/RetroRecompHub.love
 

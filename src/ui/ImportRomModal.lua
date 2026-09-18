@@ -495,8 +495,15 @@ function ImportRomModal.mousepressed(x, y, button, hitboxes, game)
     -- Files
     for _, fl in ipairs(hitboxes.files or {}) do
         if x >= fl.x and x <= fl.x + fl.w and y >= fl.y and y <= fl.y + fl.h then
-            ImportRomModal.selectedFile = fl.file
-            return "select"
+            if ImportRomModal.selectedFile and ImportRomModal.selectedFile.path == fl.file.path and game then
+                local ok, msg = RomManager.importRomForGame(game.id, fl.file.path)
+                ImportRomModal.statusMessage = msg or "ROM Importada!"
+                ImportRomModal.statusTimer = 2.5
+                return "imported"
+            else
+                ImportRomModal.selectedFile = fl.file
+                return "select"
+            end
         end
     end
 

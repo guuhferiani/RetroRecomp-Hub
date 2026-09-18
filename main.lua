@@ -255,10 +255,10 @@ end
 local suppressMouseUntil = 0
 local touchGestures = {}
 
-function love.mousepressed(screenX, screenY, button)
+function love.mousepressed(screenX, screenY, button, fromTouch)
     if button ~= 1 then return end
     local now = love.timer and love.timer.getTime() or os.time()
-    if now < suppressMouseUntil then return end
+    if not fromTouch and now < suppressMouseUntil then return end
 
     updateViewport()
     local x = screenX / uiScale
@@ -615,8 +615,8 @@ function love.touchreleased(id, tx, ty, dx, dy, pressure)
             local now = love.timer and love.timer.getTime() or os.time()
             suppressMouseUntil = now + 0.35
             if not gesture.isDrag then
-                -- Tap detected: dispatch click on virtual coordinates
-                love.mousepressed(px, py, 1)
+                -- Tap detected: dispatch click on virtual coordinates with fromTouch = true
+                love.mousepressed(px, py, 1, true)
             end
         end
     end

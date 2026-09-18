@@ -16,7 +16,12 @@ local function fileExists(path)
 end
 
 local function normalizePath(p)
-    return p:gsub("/", "\\")
+    if not p then return "" end
+    if love.system and love.system.getOS() == "Windows" then
+        return p:gsub("/", "\\")
+    else
+        return p:gsub("\\", "/")
+    end
 end
 
 function Router.findEmulator()
@@ -42,12 +47,15 @@ function Router.findRom(game)
     local Config = require("src.core.Config")
     local custom = Config.customRomPaths and Config.customRomPaths[game.id]
     if custom and custom ~= "" then
+        if fileExists(custom) then
+            return custom
+        end
         local normCustom = normalizePath(custom)
         if fileExists(normCustom) then
             return normCustom
         end
-        if fileExists(custom) then
-            return custom
+        if love.filesystem and love.filesystem.getInfo(custom) then
+            return love.filesystem.getSaveDirectory() .. "/" .. custom
         end
     end
 

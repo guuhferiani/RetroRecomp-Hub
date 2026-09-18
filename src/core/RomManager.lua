@@ -97,7 +97,33 @@ function RomManager.listDirectory(currentPath)
         return items
     end
 
-    -- 2. Native OS directory listing
+    -- 2. Try native love.filesystem.mount for external directory (bypasses Android shell/sandbox)
+    local mountPoint = "list_mount_" .. tostring(math.random(1000, 9999))
+    local okMount = pcall(function() return love.filesystem.mount(currentPath, mountPoint) end)
+    if okMount then
+        local mountedItems = love.filesystem.getDirectoryItems(mountPoint)
+        if mountedItems and #mountedItems > 0 then
+            for _, name in ipairs(mountedItems) do
+                local relPath = mountPoint .. "/" .. name
+                local fullPath = currentPath .. "/" .. name
+                local info = love.filesystem.getInfo(relPath)
+                if info then
+                    if info.type == "directory" then
+                        table.insert(items.folders, { name = name, path = fullPath, isDir = true })
+                    elseif RomManager.isSupportedFile(name) then
+                        table.insert(items.files, { name = name, path = fullPath, isDir = false, size = info.size or 0 })
+                    end
+                end
+            end
+            pcall(function() love.filesystem.unmount(currentPath) end)
+            table.sort(items.folders, function(a, b) return a.name:lower() < b.name:lower() end)
+            table.sort(items.files, function(a, b) return a.name:lower() < b.name:lower() end)
+            return items
+        end
+        pcall(function() love.filesystem.unmount(currentPath) end)
+    end
+
+    -- 3. Native OS directory listing (Windows: dir, Unix/Android: ls -1p)
     local isWin = (love.system and love.system.getOS() == "Windows")
     if isWin then
         local safePath = currentPath:gsub("/", "\\")
@@ -131,10 +157,10 @@ function RomManager.listDirectory(currentPath)
             fileHandle:close()
         end
     else
-        -- Linux / Android: Use `ls -1p` which appends '/' to directory names
+        -- Linux / Android: Use `ls -1p` which appends '/' to directory names, safe wrapped
         local cmd = string.format('ls -1p "%s" 2>/dev/null', currentPath)
-        local handle = io.popen(cmd)
-        if handle then
+        local okPopen, handle = pcall(io.popen, cmd)
+        if okPopen and handle then
             for line in handle:lines() do
                 local rawLine = line:gsub("\r", ""):gsub("\n", "")
                 if rawLine ~= "" and rawLine ~= "./" and rawLine ~= "../" and rawLine ~= "." and rawLine ~= ".." then
@@ -155,7 +181,7 @@ function RomManager.listDirectory(currentPath)
                     end
                 end
             end
-            handle:close()
+            pcall(function() handle:close() end)
         end
     end
 
@@ -266,10 +292,18 @@ function RomManager.getRomStatus(game)
             f:close()
             return true, customPath, RomManager.formatSize(size)
         end
-        -- Also check love.filesystem
+        -- Check love.filesystem (relative or in saveDirectory)
         local info = love.filesystem.getInfo(customPath)
         if info then
-            return true, customPath, RomManager.formatSize(info.size)
+            local fullSaved = love.filesystem.getSaveDirectory() .. "/" .. customPath
+            return true, fullSaved, RomManager.formatSize(info.size)
+        end
+        local saveFullPath = love.filesystem.getSaveDirectory() .. "/" .. customPath
+        local sf = io.open(saveFullPath, "rb")
+        if sf then
+            local size = sf:seek("end") or 0
+            sf:close()
+            return true, saveFullPath, RomManager.formatSize(size)
         end
     end
 
@@ -295,14 +329,67 @@ function RomManager.importRomForGame(gameId, sourceFilePath)
         return false, "Arquivo inválido"
     end
 
+    local PlatformManager = require("src.core.PlatformManager")
+    local game = PlatformManager.getGameById(gameId)
+    local platform = game and game.platform or "gbc"
+
+    -- Ensure roms directory exists in persistent save directory
+    pcall(function()
+        love.filesystem.createDirectory("roms")
+        love.filesystem.createDirectory("roms/" .. platform)
+    end)
+
+    -- Attempt to read bytes from source file to make a physical local copy
+    local fileData = nil
+    local srcFile = io.open(sourceFilePath, "rb")
+    if srcFile then
+        fileData = srcFile:read("*a")
+        srcFile:close()
+    end
+
+    -- If direct io.open failed, attempt to read via love.filesystem
+    if not fileData and love.filesystem.getInfo(sourceFilePath) then
+        fileData = love.filesystem.read(sourceFilePath)
+    end
+
+    -- If still not found and path is external, try temporary mount to read
+    if not fileData then
+        local dir = sourceFilePath:match("^(.*)[/\\][^/\\]+$")
+        local fname = sourceFilePath:match("[^/\\]+$")
+        if dir and fname then
+            local mountPoint = "imp_read_" .. tostring(math.random(1000, 9999))
+            local okMount = pcall(function() return love.filesystem.mount(dir, mountPoint) end)
+            if okMount then
+                local mountedPath = mountPoint .. "/" .. fname
+                if love.filesystem.getInfo(mountedPath) then
+                    fileData = love.filesystem.read(mountedPath)
+                end
+                pcall(function() love.filesystem.unmount(dir) end)
+            end
+        end
+    end
+
+    local assignedPath = sourceFilePath
+
+    -- If file content was successfully retrieved, save a physical copy to the Hub
+    if fileData and #fileData > 0 then
+        local cleanName = sourceFilePath:match("[^/\\]+$") or (gameId .. "." .. platform)
+        local destRelPath = "roms/" .. platform .. "/" .. cleanName
+        local written = love.filesystem.write(destRelPath, fileData)
+        if written then
+            assignedPath = destRelPath
+            print(string.format("[ROM_MANAGER] Saved physical copy of ROM to %s (%d bytes)", destRelPath, #fileData))
+        end
+    end
+
     -- Store path in Config
     if not Config.customRomPaths then
         Config.customRomPaths = {}
     end
-    Config.customRomPaths[gameId] = sourceFilePath
+    Config.customRomPaths[gameId] = assignedPath
     Config.save()
 
-    print(string.format("[ROM_MANAGER] Assigned ROM for %s -> %s", gameId, sourceFilePath))
+    print(string.format("[ROM_MANAGER] Assigned ROM for %s -> %s", gameId, assignedPath))
     return true, "ROM importada com sucesso!"
 end
 
@@ -354,6 +441,22 @@ function RomManager.handleDroppedFile(fileObject)
     end
 
     if matchedGame then
+        local okOpen, _ = pcall(function() return fileObject:open("r") end)
+        if okOpen then
+            local data = fileObject:read()
+            pcall(function() fileObject:close() end)
+            if data and #data > 0 then
+                pcall(function()
+                    love.filesystem.createDirectory("roms")
+                    love.filesystem.createDirectory("roms/" .. matchedGame.platform)
+                end)
+                local cleanName = filename:match("[^/\\]+$") or (matchedGame.id .. "." .. ext)
+                local destRel = "roms/" .. matchedGame.platform .. "/" .. cleanName
+                love.filesystem.write(destRel, data)
+                RomManager.importRomForGame(matchedGame.id, destRel)
+                return true, string.format("ROM %s importada para %s!", cleanName, matchedGame.title)
+            end
+        end
         RomManager.importRomForGame(matchedGame.id, filename)
         return true, string.format("ROM associada a %s com sucesso!", matchedGame.title)
     end

@@ -2,6 +2,7 @@ function love.conf(t)
     t.identity = "RetroRecompHub"
     t.version = "11.5"
     t.console = false
+    t.externalstorage = true
 
     t.window.title = "RetroRecomp Hub"
     t.window.width = 440
